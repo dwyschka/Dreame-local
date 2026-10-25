@@ -1,0 +1,40 @@
+# Dashboard-Beispiele für "Home Assistant als Dreame-App"
+# Entitätsnamen ggf. anpassen (vacuum.dreame, camera.dreame_map, ...).
+
+# ---------------------------------------------------------------- Variante A
+# Dreame Vacuum Card (App-Ersatz, Lizenz pro Gerät nötig, bei der Integration dabei)
+type: custom:dreame-vacuum-card
+entity: vacuum.dreame
+
+---
+# ---------------------------------------------------------------- Variante B
+# Kostenlos: Karte + Steuerung
+type: vertical-stack
+cards:
+  - type: picture-entity
+    entity: camera.dreame_map
+    camera_view: live
+    show_name: false
+    show_state: false
+  - type: entities
+    title: Dreame
+    entities:
+      - entity: vacuum.dreame
+      - entity: sensor.dreame_battery
+      - entity: sensor.dreame_status
+      - entity: select.dreame_suction_level
+      - entity: select.dreame_water_volume
+      - entity: select.dreame_cleaning_mode
+      - entity: button.dreame_locate
+
+---
+# ---------------------------------------------------------------- Variante C
+# Kostenlos + interaktive Karte (Xiaomi Vacuum Map Card, HACS-Frontend)
+# Vorher in der Integration camera.map_data aktivieren und die übrigen
+# Karten-Cameras deaktivieren (Rendering im Browser).
+type: custom:xiaomi-vacuum-map-card
+entity: vacuum.dreame
+map_source:
+  camera: camera.dreame_map_data
+calibration_source:
+  camera: true

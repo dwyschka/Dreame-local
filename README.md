@@ -1,17 +1,17 @@
 # Dreame Local Cloud
 
 Lokaler Cloud-Ersatz für Dreame-Roboter (L10s Ultra Gen 2 & verwandte
-Modelle) — als Home-Assistant-Add-on mit MQTT-Discovery.
+Modelle) — als Home-Assistant-Add-on. **Home Assistant übernimmt die Rolle
+der Dreame-App**: Steuerung, Status, Karte, Räume/Zonen und Einstellungen.
 
 Der Roboter verbindet sich mit diesem Add-on statt mit der Dreame-Cloud.
-Steuerung (Start/Pause/Stop/Home/Finden), Saugstufe, Wassermenge, Modus,
-Akku und alle Status-Sensoren laufen danach **ohne Internet und ohne
-Dreame-App**, direkt in Home Assistant.
+Die bestehende **Dreame-Vacuum-Integration** (Tasshack) läuft unverändert
+dagegen — inklusive Karten und Kartenfunktionen. Alternativ gibt es einen
+schlanken MQTT-Discovery-Modus ohne HACS.
 
-> **Status:** Steuerung + Status + Sensoren verifiziert auf
-> `dreame.vacuum.r2469a`, FW `4.3.9_1642`. Zwei Betriebsmodi:
-> **(A)** MQTT-Discovery (eigene Entitäten) und **(B)** Dreame-API-Emulation
-> für die bestehende Tasshack-Integration inkl. Karten-Cards.
+> **Status:** Steuerung, Status und API-Emulation verifiziert auf
+> `dreame.vacuum.r2469a`, FW `4.3.9_1642`. Kartenblobs werden angenommen
+> und ausgeliefert; die Anzeige übernimmt die Integration/Karte.
 
 ---
 
@@ -20,7 +20,8 @@ Dreame-App**, direkt in Home Assistant.
 | Was | Warum |
 |---|---|
 | Home Assistant OS oder Supervised | Add-ons |
-| Mosquitto-Broker-Add-on + MQTT-Integration | Discovery/Steuerung in HA |
+| HACS + Integration „Dreame Vacuum" | Entitäten, Karte, Karten-Cards (Modus B) |
+| Mosquitto + MQTT-Integration | nur für den optionalen Discovery-Modus A |
 | AdGuard Home, Pi-hole oder Router mit DNS-Einträgen | Der Roboter muss hierher finden |
 | Roboter im WLAN, mit der Dreame-App gekoppelt | Die Kopplung bleibt bestehen |
 | Zertifikate in `dreame_local/app/certs/` | Liegen im Repo (aus der Dreame-App) |
@@ -31,11 +32,12 @@ Dreame-App**, direkt in Home Assistant.
 
 | Modus | Was du bekommst | Voraussetzung |
 |---|---|---|
-| **A – MQTT-Discovery** | Eigene HA-Entitäten (Vacuum, Sensoren, Selects, Buttons), kein HACS nötig | Nur DNS-Rewrite für `*.mt…` |
-| **B – Dreame-API** | Die bestehende **Tasshack-Integration** + Karten-Cards laufen unverändert gegen den lokalen Server | DNS-Rewrite für `eu.iot.dreame.tech` **und** `*.mt…` |
+| **B – Dreame-API (empfohlen)** | Die bestehende **Tasshack-Integration** + Karten-Cards laufen unverändert gegen den lokalen Server. Home Assistant ersetzt die Dreame-App. | DNS-Rewrite für `eu.iot.dreame.tech` **und** `*.mt…` |
+| A – MQTT-Discovery | Eigene, schlanke HA-Entitäten (Vacuum, Sensoren, Selects, Buttons), kein HACS nötig | Nur DNS-Rewrite für `*.mt…` |
 
 Beides gleichzeitig geht, erzeugt aber doppelte Entitäten. Empfehlung:
-entweder A **oder** B.
+**B**. Die komplette Anleitung inkl. Dashboard-Cards steht in
+[`docs/HA-ALS-APP.md`](docs/HA-ALS-APP.md).
 
 ### Modus B: Tasshack-Integration lokal
 
@@ -83,7 +85,7 @@ entweder A **oder** B.
    device_model: "dreame.vacuum.r2469a"
    region: "eu"
    device_name: "Dreame"
-   mqtt_host: "core-mosquitto"
+   mqtt_host: ""                         # leer = keine Discovery-Duplikate (Modus B)
    mqtt_port: 1883
    mqtt_username: ""
    mqtt_password: ""
