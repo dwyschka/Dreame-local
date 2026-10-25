@@ -1,0 +1,1908 @@
+{
+"properties": {
+"STATE": {
+"siid": 2,
+"piid": 1
+},
+"ERROR": {
+"siid": 2,
+"piid": 2
+},
+"BATTERY_LEVEL": {
+"siid": 3,
+"piid": 1
+},
+"CHARGING_STATUS": {
+"siid": 3,
+"piid": 2
+},
+"OFF_PEAK_CHARGING": {
+"siid": 3,
+"piid": 3
+},
+"STATUS": {
+"siid": 4,
+"piid": 1
+},
+"CLEANING_TIME": {
+"siid": 4,
+"piid": 2
+},
+"CLEANED_AREA": {
+"siid": 4,
+"piid": 3
+},
+"SUCTION_LEVEL": {
+"siid": 4,
+"piid": 4
+},
+"WATER_VOLUME": {
+"siid": 4,
+"piid": 5
+},
+"WATER_TANK": {
+"siid": 4,
+"piid": 6
+},
+"TASK_STATUS": {
+"siid": 4,
+"piid": 7
+},
+"CLEANING_START_TIME": {
+"siid": 4,
+"piid": 8
+},
+"CLEAN_LOG_FILE_NAME": {
+"siid": 4,
+"piid": 9
+},
+"CLEANING_PROPERTIES": {
+"siid": 4,
+"piid": 10
+},
+"RESUME_CLEANING": {
+"siid": 4,
+"piid": 11
+},
+"CARPET_BOOST": {
+"siid": 4,
+"piid": 12
+},
+"CLEAN_LOG_STATUS": {
+"siid": 4,
+"piid": 13
+},
+"SERIAL_NUMBER": {
+"siid": 4,
+"piid": 14
+},
+"REMOTE_CONTROL": {
+"siid": 4,
+"piid": 15
+},
+"MOP_CLEANING_REMAINDER": {
+"siid": 4,
+"piid": 16
+},
+"CLEANING_PAUSED": {
+"siid": 4,
+"piid": 17
+},
+"FAULTS": {
+"siid": 4,
+"piid": 18
+},
+"NATION_MATCHED": {
+"siid": 4,
+"piid": 19
+},
+"RELOCATION_STATUS": {
+"siid": 4,
+"piid": 20
+},
+"OBSTACLE_AVOIDANCE": {
+"siid": 4,
+"piid": 21
+},
+"AI_OBSTACLE_DETECTION": {
+"siid": 4,
+"piid": 22
+},
+"CLEANING_MODE": {
+"siid": 4,
+"piid": 23
+},
+"UPLOAD_MAP": {
+"siid": 4,
+"piid": 24
+},
+"SELF_WASH_BASE_STATUS": {
+"siid": 4,
+"piid": 25
+},
+"CUSTOMIZED_CLEANING": {
+"siid": 4,
+"piid": 26
+},
+"CHILD_LOCK": {
+"siid": 4,
+"piid": 27
+},
+"CARPET_SENSITIVITY": {
+"siid": 4,
+"piid": 28
+},
+"TIGHT_MOPPING": {
+"siid": 4,
+"piid": 29
+},
+"CLEANING_CANCEL": {
+"siid": 4,
+"piid": 30
+},
+"Y_CLEAN": {
+"siid": 4,
+"piid": 31
+},
+"WATER_ELECTROLYSIS": {
+"siid": 4,
+"piid": 32
+},
+"CARPET_RECOGNITION": {
+"siid": 4,
+"piid": 33
+},
+"SELF_CLEAN": {
+"siid": 4,
+"piid": 34
+},
+"WARN_STATUS": {
+"siid": 4,
+"piid": 35
+},
+"CARPET_CLEANING": {
+"siid": 4,
+"piid": 36
+},
+"AUTO_ADD_DETERGENT": {
+"siid": 4,
+"piid": 37
+},
+"CAPABILITY": {
+"siid": 4,
+"piid": 38
+},
+"SAVE_WATER_TIPS": {
+"siid": 4,
+"piid": 39
+},
+"DRYING_TIME": {
+"siid": 4,
+"piid": 40
+},
+"LOW_WATER_WARNING": {
+"siid": 4,
+"piid": 41
+},
+"MAP_INDEX": {
+"siid": 4,
+"piid": 42
+},
+"MAP_NAME": {
+"siid": 4,
+"piid": 43
+},
+"CRUISE_TYPE": {
+"siid": 4,
+"piid": 44
+},
+"AUTO_MOUNT_MOP": {
+"siid": 4,
+"piid": 45
+},
+"MOP_WASH_LEVEL": {
+"siid": 4,
+"piid": 46
+},
+"SCHEDULED_CLEAN": {
+"siid": 4,
+"piid": 47
+},
+"SHORTCUTS": {
+"siid": 4,
+"piid": 48
+},
+"INTELLIGENT_RECOGNITION": {
+"siid": 4,
+"piid": 49
+},
+"AUTO_SWITCH_SETTINGS": {
+"siid": 4,
+"piid": 50
+},
+"AUTO_WATER_REFILLING": {
+"siid": 4,
+"piid": 51
+},
+"MOP_IN_STATION": {
+"siid": 4,
+"piid": 52
+},
+"MOP_PAD_INSTALLED": {
+"siid": 4,
+"piid": 53
+},
+"WATER_CHECK": {
+"siid": 4,
+"piid": 54
+},
+"DRY_STOP_REMAINDER": {
+"siid": 4,
+"piid": 55
+},
+"NUMERIC_MESSAGE_PROMPT": {
+"siid": 4,
+"piid": 56
+},
+"MESSAGE_PROMPT": {
+"siid": 4,
+"piid": 57
+},
+"TASK_TYPE": {
+"siid": 4,
+"piid": 58
+},
+"PET_DETECTIVE": {
+"siid": 4,
+"piid": 59
+},
+"DRAINAGE_STATUS": {
+"siid": 4,
+"piid": 60
+},
+"DOCK_CLEANING_STATUS": {
+"siid": 4,
+"piid": 61
+},
+"BACK_CLEAN_MODE": {
+"siid": 4,
+"piid": 62
+},
+"CLEANING_PROGRESS": {
+"siid": 4,
+"piid": 63
+},
+"DRYING_PROGRESS": {
+"siid": 4,
+"piid": 64
+},
+"CLEANING_PROGRESS_INFO": {
+"siid": 4,
+"piid": 66
+},
+"DEVICE_CAPABILITY": {
+"siid": 4,
+"piid": 83
+},
+"ONBOARD_WETNESS_LEVEL": {
+"siid": 4,
+"piid": 105
+},
+"DND": {
+"siid": 5,
+"piid": 1
+},
+"DND_START": {
+"siid": 5,
+"piid": 2
+},
+"DND_END": {
+"siid": 5,
+"piid": 3
+},
+"DND_TASK": {
+"siid": 5,
+"piid": 4
+},
+"MAP_DATA": {
+"siid": 6,
+"piid": 1
+},
+"FRAME_INFO": {
+"siid": 6,
+"piid": 2
+},
+"OBJECT_NAME": {
+"siid": 6,
+"piid": 3
+},
+"MAP_EXTEND_DATA": {
+"siid": 6,
+"piid": 4
+},
+"ROBOT_TIME": {
+"siid": 6,
+"piid": 5
+},
+"RESULT_CODE": {
+"siid": 6,
+"piid": 6
+},
+"MULTI_FLOOR_MAP": {
+"siid": 6,
+"piid": 7
+},
+"MAP_LIST": {
+"siid": 6,
+"piid": 8
+},
+"RECOVERY_MAP_LIST": {
+"siid": 6,
+"piid": 9
+},
+"MAP_RECOVERY": {
+"siid": 6,
+"piid": 10
+},
+"MAP_RECOVERY_STATUS": {
+"siid": 6,
+"piid": 11
+},
+"OLD_MAP_DATA": {
+"siid": 6,
+"piid": 13
+},
+"MAP_BACKUP_STATUS": {
+"siid": 6,
+"piid": 14
+},
+"WIFI_MAP": {
+"siid": 6,
+"piid": 15
+},
+"RESTORE_MAP_FROM_DATA": {
+"siid": 6,
+"piid": 16
+},
+"VOLUME": {
+"siid": 7,
+"piid": 1
+},
+"VOICE_PACKET_ID": {
+"siid": 7,
+"piid": 2
+},
+"VOICE_CHANGE_STATUS": {
+"siid": 7,
+"piid": 3
+},
+"VOICE_CHANGE": {
+"siid": 7,
+"piid": 4
+},
+"VOICE_ASSISTANT": {
+"siid": 7,
+"piid": 5
+},
+"EMPTY_STAMP": {
+"siid": 7,
+"piid": 6
+},
+"CURRENT_CITY": {
+"siid": 7,
+"piid": 7
+},
+"VOICE_TEST": {
+"siid": 7,
+"piid": 9
+},
+"VOICE_ASSISTANT_LANGUAGE": {
+"siid": 7,
+"piid": 10
+},
+"LISTEN_LANGUAGE_TYPE": {
+"siid": 7,
+"piid": 10
+},
+"BAIDU_LOG": {
+"siid": 7,
+"piid": 11
+},
+"RESPONSE_WORD": {
+"siid": 7,
+"piid": 12
+},
+"DREAME_GPT": {
+"siid": 7,
+"piid": 14
+},
+"LISTEN_LANGUAGE": {
+"siid": 7,
+"piid": 15
+},
+"LISTEN_LANGUAGE_STATUS": {
+"siid": 7,
+"piid": 16
+},
+"DEV_VOICE_CONTROL": {
+"siid": 7,
+"piid": 17
+},
+"FULL_DUPLEX_SOUND": {
+"siid": 7,
+"piid": 18
+},
+"DISABLE_VOICE_WAKE_UP": {
+"siid": 7,
+"piid": 19
+},
+"CUSTOM_WAKE_UP": {
+"siid": 7,
+"piid": 20
+},
+"CUSTOM_WAKE_UP_WORD": {
+"siid": 7,
+"piid": 21
+},
+"CUSTOM_WAKE_UP_WORD_STATUS": {
+"siid": 7,
+"piid": 22
+},
+"COMBINE_WAKE_UP_WORD_COMMAND": {
+"siid": 7,
+"piid": 23
+},
+"TIMEZONE": {
+"siid": 8,
+"piid": 1
+},
+"SCHEDULE": {
+"siid": 8,
+"piid": 2
+},
+"SCHEDULE_ID": {
+"siid": 8,
+"piid": 3
+},
+"SCHEDULE_CANCEL_REASON": {
+"siid": 8,
+"piid": 4
+},
+"CRUISE_SCHEDULE": {
+"siid": 8,
+"piid": 5
+},
+"PET_CRUISE_SCHEDULE": {
+"siid": 8,
+"piid": 6
+},
+"MAIN_BRUSH_TIME_LEFT": {
+"siid": 9,
+"piid": 1
+},
+"MAIN_BRUSH_LEFT": {
+"siid": 9,
+"piid": 2
+},
+"SIDE_BRUSH_TIME_LEFT": {
+"siid": 10,
+"piid": 1
+},
+"SIDE_BRUSH_LEFT": {
+"siid": 10,
+"piid": 2
+},
+"FILTER_LEFT": {
+"siid": 11,
+"piid": 1
+},
+"FILTER_TIME_LEFT": {
+"siid": 11,
+"piid": 2
+},
+"FIRST_CLEANING_DATE": {
+"siid": 12,
+"piid": 1
+},
+"TOTAL_CLEANING_TIME": {
+"siid": 12,
+"piid": 2
+},
+"CLEANING_COUNT": {
+"siid": 12,
+"piid": 3
+},
+"TOTAL_CLEANED_AREA": {
+"siid": 12,
+"piid": 4
+},
+"TOTAL_RUNTIME": {
+"siid": 12,
+"piid": 5
+},
+"TOTAL_CRUISE_TIME": {
+"siid": 12,
+"piid": 6
+},
+"MAP_SAVING": {
+"siid": 13,
+"piid": 1
+},
+"KEEP_ALIVE": {
+"siid": 14,
+"piid": 4
+},
+"GET_PUBLIC_KEY": {
+"siid": 14,
+"piid": 5
+},
+"MATTER_NETWORK_STARTUP": {
+"siid": 14,
+"piid": 6
+},
+"COUNTRY_CODE": {
+"siid": 14,
+"piid": 7
+},
+"MAINS_POWER_FREQUENCY": {
+"siid": 14,
+"piid": 9
+},
+"AUTO_DUST_COLLECTING": {
+"siid": 15,
+"piid": 1
+},
+"AUTO_EMPTY_FREQUENCY": {
+"siid": 15,
+"piid": 2
+},
+"DUST_COLLECTION": {
+"siid": 15,
+"piid": 3
+},
+"AUTO_EMPTY_STATUS": {
+"siid": 15,
+"piid": 5
+},
+"SENSOR_DIRTY_LEFT": {
+"siid": 16,
+"piid": 1
+},
+"SENSOR_DIRTY_TIME_LEFT": {
+"siid": 16,
+"piid": 2
+},
+"TANK_FILTER_LEFT": {
+"siid": 17,
+"piid": 1
+},
+"TANK_FILTER_TIME_LEFT": {
+"siid": 17,
+"piid": 2
+},
+"MOP_PAD_LEFT": {
+"siid": 18,
+"piid": 1
+},
+"MOP_PAD_TIME_LEFT": {
+"siid": 18,
+"piid": 2
+},
+"SILVER_ION_TIME_LEFT": {
+"siid": 19,
+"piid": 1
+},
+"SILVER_ION_LEFT": {
+"siid": 19,
+"piid": 2
+},
+"SILVER_ION_ADD": {
+"siid": 19,
+"piid": 3
+},
+"DETERGENT_LEFT": {
+"siid": 20,
+"piid": 1
+},
+"DETERGENT_TIME_LEFT": {
+"siid": 20,
+"piid": 2
+},
+"SQUEEGEE_TIME_LEFT": {
+"siid": 24,
+"piid": 1
+},
+"SQUEEGEE_LEFT": {
+"siid": 24,
+"piid": 2
+},
+"DIRTY_WATER_CHANNEL_DIRTY_TIME_LEFT": {
+"siid": 25,
+"piid": 1
+},
+"DIRTY_WATER_CHANNEL_DIRTY_LEFT": {
+"siid": 25,
+"piid": 2
+},
+"ONBOARD_DIRTY_WATER_TANK_TIME_LEFT": {
+"siid": 26,
+"piid": 1
+},
+"ONBOARD_DIRTY_WATER_TANK_LEFT": {
+"siid": 26,
+"piid": 2
+},
+"CLEAN_WATER_TANK_STATUS": {
+"siid": 27,
+"piid": 1
+},
+"DIRTY_WATER_TANK_STATUS": {
+"siid": 27,
+"piid": 2
+},
+"DUST_BAG_STATUS": {
+"siid": 27,
+"piid": 3
+},
+"DETERGENT_STATUS": {
+"siid": 27,
+"piid": 4
+},
+"STATION_DRAINAGE_STATUS": {
+"siid": 27,
+"piid": 5
+},
+"LDS_STATUS": {
+"siid": 27,
+"piid": 6
+},
+"AI_MAP_OPTIMIZATION_STATUS": {
+"siid": 27,
+"piid": 7
+},
+"SECOND_CLEANING_STATUS": {
+"siid": 27,
+"piid": 8
+},
+"WATER_TANK_STATUS": {
+"siid": 27,
+"piid": 9
+},
+"ADD_CLEANING_AREA_STATUS": {
+"siid": 27,
+"piid": 10
+},
+"ADD_CLEANING_AREA_RESULT": {
+"siid": 27,
+"piid": 11
+},
+"FIRST_CONNECT_WIFI": {
+"siid": 27,
+"piid": 12
+},
+"HAND_DUST_STATUS": {
+"siid": 27,
+"piid": 13
+},
+"HAND_DUST_CONNECT_STATUS": {
+"siid": 27,
+"piid": 14
+},
+"HOT_WATER_STATUS": {
+"siid": 27,
+"piid": 15
+},
+"THRESHOLD_CONFIRMATION_STATUS": {
+"siid": 27,
+"piid": 16
+},
+"DUST_BAG_DRYING_LEFT": {
+"siid": 27,
+"piid": 17
+},
+"DUST_BAG_DRYING_STATUS": {
+"siid": 27,
+"piid": 18
+},
+"DUST_BOX_STATUS": {
+"siid": 27,
+"piid": 19
+},
+"ROLLER_COVER": {
+"siid": 27,
+"piid": 20
+},
+"CABIN_DOOR_DRYING_LEFT_TIME": {
+"siid": 27,
+"piid": 21
+},
+"ROBOT_ARM_COVER_STATUS": {
+"siid": 27,
+"piid": 22
+},
+"MOP_TRANSPORT_CARRIER_RESET": {
+"siid": 27,
+"piid": 24
+},
+"MOP_TRANSPORT_CARRIER_STATUS": {
+"siid": 27,
+"piid": 25
+},
+"ROLLER_COVER_STATUS": {
+"siid": 27,
+"piid": 26
+},
+"WASHBOARD_CLEANING_STATUS": {
+"siid": 27,
+"piid": 27
+},
+"MECHANICAL_FOOT_STATUS": {
+"siid": 27,
+"piid": 28
+},
+"ROBOT_ARM_AVAILABLE": {
+"siid": 27,
+"piid": 29
+},
+"STATION_OTA_STATUS": {
+"siid": 27,
+"piid": 30
+},
+"CLIMBER_PAIR_STATUS": {
+"siid": 27,
+"piid": 33
+},
+"INTELLIGENT_SUPERCHARGING_STATUS": {
+"siid": 27,
+"piid": 43
+},
+"INTELLIGENT_SUPERCHARGING_LEVEL": {
+"siid": 27,
+"piid": 44
+},
+"PRESSURIZED_ROLLER_STATUS": {
+"siid": 27,
+"piid": 45
+},
+"WETNESS_LEVEL": {
+"siid": 28,
+"piid": 1
+},
+"CLEAN_CARPETS_FIRST": {
+"siid": 28,
+"piid": 2
+},
+"AUTO_LDS_COVERAGE": {
+"siid": 28,
+"piid": 3
+},
+"LDS_STATE": {
+"siid": 28,
+"piid": 4
+},
+"CLEANGENIUS_MODE": {
+"siid": 28,
+"piid": 5
+},
+"QUICK_WASH_MODE": {
+"siid": 28,
+"piid": 6
+},
+"HAS_CHILDREN": {
+"siid": 28,
+"piid": 7
+},
+"WATER_TEMPERATURE": {
+"siid": 28,
+"piid": 8
+},
+"CLEAN_EFFICIENCY": {
+"siid": 28,
+"piid": 9
+},
+"IMPACT_INJECTION_PUMP": {
+"siid": 28,
+"piid": 12
+},
+"OBSTACLE_VIDEOS": {
+"siid": 28,
+"piid": 13
+},
+"DND_DISABLE_RESUME_CLEANING": {
+"siid": 28,
+"piid": 14
+},
+"DND_DISABLE_AUTO_EMPTY": {
+"siid": 28,
+"piid": 15
+},
+"DND_REDUCE_VOLUME": {
+"siid": 28,
+"piid": 16
+},
+"HAND_VACUUM_AUTO_DUSTING": {
+"siid": 28,
+"piid": 17
+},
+"DYNAMIC_OBSTACLE_CLEANING": {
+"siid": 28,
+"piid": 18
+},
+"HUMAN_NOISE_REDUCTION": {
+"siid": 28,
+"piid": 19
+},
+"PET_CARE": {
+"siid": 28,
+"piid": 20
+},
+"LOWER_HATCH_CONTROL": {
+"siid": 28,
+"piid": 21
+},
+"SMART_MOP_WASHING": {
+"siid": 28,
+"piid": 22
+},
+"BLOCK_HEALTH_CHECKS": {
+"siid": 28,
+"piid": 23
+},
+"MOP_AFTER_VACUUM": {
+"siid": 28,
+"piid": 24
+},
+"SMALL_AREA_FAST_CLEAN": {
+"siid": 28,
+"piid": 25
+},
+"SHIELD_ULTRASONIC_SIGNALS": {
+"siid": 28,
+"piid": 26
+},
+"SILENT_DRYING": {
+"siid": 28,
+"piid": 27
+},
+"HAIR_COMPRESSION": {
+"siid": 28,
+"piid": 28
+},
+"SIDE_BRUSH_CARPET_ROTATE": {
+"siid": 28,
+"piid": 29
+},
+"ERP_LOW_POWER": {
+"siid": 28,
+"piid": 30
+},
+"SHIELD_WASHBOARD_IN_PLACE": {
+"siid": 28,
+"piid": 31
+},
+"SELF_CLEANING_PROBLEM": {
+"siid": 28,
+"piid": 32
+},
+"WASHING_TEST": {
+"siid": 28,
+"piid": 33
+},
+"WIFI_PERFORMANCE_TEST": {
+"siid": 28,
+"piid": 34
+},
+"EMERGENCY_INFORMATION_UPLOAD": {
+"siid": 28,
+"piid": 35
+},
+"FEEDBACK_SWITCH": {
+"siid": 28,
+"piid": 36
+},
+"CARPET_AI_SEGMENT": {
+"siid": 28,
+"piid": 37
+},
+"OBSTACLE_CROSSING": {
+"siid": 28,
+"piid": 38
+},
+"VISUAL_RESUME": {
+"siid": 28,
+"piid": 39
+},
+"FAN_ABNORMAL_NOISE": {
+"siid": 28,
+"piid": 40
+},
+"LARGE_MEMORY_RESET": {
+"siid": 28,
+"piid": 41
+},
+"BOW_BEFORE_EDGE": {
+"siid": 28,
+"piid": 42
+},
+"VOLTAGE": {
+"siid": 28,
+"piid": 43
+},
+"DETERGENT_A": {
+"siid": 28,
+"piid": 44
+},
+"DETERGENT_B": {
+"siid": 28,
+"piid": 45
+},
+"MOP_TEMPERATURE": {
+"siid": 28,
+"piid": 46
+},
+"BATTERY_CHARGE_LEVEL": {
+"siid": 28,
+"piid": 47
+},
+"DUST_BAG_DRYING": {
+"siid": 28,
+"piid": 48
+},
+"SWEEP_DISTANCE": {
+"siid": 28,
+"piid": 49
+},
+"LOW_LYING_AREA_FREQUENCY": {
+"siid": 28,
+"piid": 51
+},
+"MOPPING_WITH_DETERGENT": {
+"siid": 28,
+"piid": 52
+},
+"PRESSURIZED_CLEANING": {
+"siid": 28,
+"piid": 53
+},
+"SCRAPER_FREQUENCY": {
+"siid": 28,
+"piid": 54
+},
+"REALTIME_PARTICLE_DETECT": {
+"siid": 28,
+"piid": 58
+},
+"IGNORE_STAIRS": {
+"siid": 28,
+"piid": 59
+},
+"LIFT_CHASSIS_ON_CARPET": {
+"siid": 28,
+"piid": 60
+},
+"RING_LIGHT_ALWAYS_ON": {
+"siid": 28,
+"piid": 61
+},
+"AUTO_CHANGE_MOP": {
+"siid": 28,
+"piid": 62
+},
+"POWER_SAVING": {
+"siid": 28,
+"piid": 63
+},
+"WHEEL_LIFT_BOOST_MOPPING": {
+"siid": 28,
+"piid": 64
+},
+"CABIN_DOOR_DRYING_TIME": {
+"siid": 28,
+"piid": 66
+},
+"CABIN_DOOR_SILENT_DRYING": {
+"siid": 28,
+"piid": 67
+},
+"CABIN_DOOR_DRYING": {
+"siid": 28,
+"piid": 68
+},
+"CLOSE_ROLLER_COVER_ON_CARPET": {
+"siid": 28,
+"piid": 69
+},
+"ROBOT_ARM_STATUS": {
+"siid": 28,
+"piid": 70
+},
+"AUXILIARY_CLEANING": {
+"siid": 28,
+"piid": 71
+},
+"AUTO_ARRANGEMENT": {
+"siid": 28,
+"piid": 72
+},
+"ROBOT_ARM_OVERWEIGHT_PROTECTION": {
+"siid": 28,
+"piid": 73
+},
+"ROBOT_ARM_ARRANGEMENT_MODE": {
+"siid": 28,
+"piid": 74
+},
+"FLOOR_MAINTAINING": {
+"siid": 28,
+"piid": 75
+},
+"DETERGENT_C": {
+"siid": 28,
+"piid": 76
+},
+"ROBOT_ARM_OBJECT_STATUS": {
+"siid": 28,
+"piid": 77
+},
+"ROBOT_ARM_CAMERA_STATUS": {
+"siid": 28,
+"piid": 78
+},
+"STORE_MODE": {
+"siid": 28,
+"piid": 79
+},
+"ROBOT_ARM_MODE": {
+"siid": 28,
+"piid": 80
+},
+"INTEGRATED_POWER": {
+"siid": 28,
+"piid": 81
+},
+"NARROW_WALL_CLEANING": {
+"siid": 28,
+"piid": 82
+},
+"INTELLIGENT_STAIN_CLEANING": {
+"siid": 28,
+"piid": 83
+},
+"ACTIVE_SUSPENSION_CROSSING": {
+"siid": 28,
+"piid": 84
+},
+"SHIELD_ROLLER_ACTIVE": {
+"siid": 28,
+"piid": 85
+},
+"MOP_PRESSURE": {
+"siid": 28,
+"piid": 86
+},
+"PET_AI_MODEL": {
+"siid": 28,
+"piid": 87
+},
+"LOWER_LDS_WHILE_DOCKING": {
+"siid": 28,
+"piid": 88
+},
+"RL_NAVIGATION_MESSAGE": {
+"siid": 28,
+"piid": 89
+},
+"DUST_LIGHT": {
+"siid": 28,
+"piid": 90
+},
+"QUICK_MOP_SWITCHING": {
+"siid": 28,
+"piid": 92
+},
+"BLOCK_AGENCY_ALARM": {
+"siid": 28,
+"piid": 93
+},
+"EXHIBITION_MODE": {
+"siid": 28,
+"piid": 94
+},
+"AUTO_EMPTY_AREA": {
+"siid": 28,
+"piid": 95
+},
+"MINIMAL_VOICE_PROMPTS": {
+"siid": 28,
+"piid": 97
+},
+"CLEARANCE_LEG_OBSTACLE_CROSSING": {
+"siid": 28,
+"piid": 98
+},
+"OMNIDIRECTIONAL_WHELL_LIFTING": {
+"siid": 28,
+"piid": 99
+},
+"ONLY_IDENTIFY_CLEANING_OBSTACLES": {
+"siid": 28,
+"piid": 100
+},
+"MOP_SCRUBBING_SPEED": {
+"siid": 28,
+"piid": 101
+},
+"ACTIVE_LIGHT_ENHANCED_DETECTION": {
+"siid": 28,
+"piid": 102
+},
+"SHIELDED_MEMBRANE_SENSOR": {
+"siid": 28,
+"piid": 103
+},
+"MOP_HIGH_SPEED_ROTATION": {
+"siid": 28,
+"piid": 104
+},
+"STAIN_RECOGNITION": {
+"siid": 28,
+"piid": 106
+},
+"DYNAMIC_EDGE_EXTENSION": {
+"siid": 28,
+"piid": 107
+},
+"OFFLINE_DEMO_MODE": {
+"siid": 28,
+"piid": 108
+},
+"INTELLIGENT_SUPERCHARGING": {
+"siid": 28,
+"piid": 109
+},
+"STEAM_CLEANING_MODE": {
+"siid": 28,
+"piid": 111
+},
+"BATTERY_ABNORMAL": {
+"siid": 28,
+"piid": 110
+},
+"STAIN_RECOGNITION_SENSITIVITY": {
+"siid": 28,
+"piid": 112
+},
+"STAIR_CLEANING": {
+"siid": 28,
+"piid": 113
+},
+"EXTENDED_SAFETY_REGULATION": {
+"siid": 28,
+"piid": 114
+},
+"GROUND_DETECTION": {
+"siid": 28,
+"piid": 115
+},
+"DRIVE_WHEEL_MOS_SHORT": {
+"siid": 28,
+"piid": 116
+},
+"DRIVE_WHEEL_EXTENDED_SAFETY_REGULATION": {
+"siid": 28,
+"piid": 117
+},
+"DEODORIZER_TIME_LEFT": {
+"siid": 29,
+"piid": 1
+},
+"DEODORIZER_LEFT": {
+"siid": 29,
+"piid": 2
+},
+"WHEEL_DIRTY_TIME_LEFT": {
+"siid": 30,
+"piid": 1
+},
+"WHEEL_DIRTY_LEFT": {
+"siid": 30,
+"piid": 2
+},
+"SCALE_INHIBITOR_TIME_LEFT": {
+"siid": 31,
+"piid": 1
+},
+"SCALE_INHIBITOR_LEFT": {
+"siid": 31,
+"piid": 2
+},
+"FLUFFING_ROLLER_DIRTY_LEFT": {
+"siid": 32,
+"piid": 1
+},
+"FLUFFING_ROLLER_DIRTY_TIME_LEFT": {
+"siid": 32,
+"piid": 2
+},
+"ROLLER_MOP_FILTER_DIRTY_LEFT": {
+"siid": 33,
+"piid": 1
+},
+"ROLLER_MOP_FILTER_DIRTY_TIME_LEFT": {
+"siid": 33,
+"piid": 2
+},
+"BLOCK_EXCEPTION_LIST": {
+"siid": 34,
+"piid": 1
+},
+"MAP_FLOOR_MATCHING": {
+"siid": 34,
+"piid": 4
+},
+"CLIMBER_ERROR_CODE": {
+"siid": 34,
+"piid": 5
+},
+"MULTI_FLOOR_CLEANING": {
+"siid": 34,
+"piid": 6
+},
+"WATER_OUTLET_FILTER_DIRTY_TIME_LEFT": {
+"siid": 35,
+"piid": 1
+},
+"WATER_OUTLET_FILTER_DIRTY_LEFT": {
+"siid": 35,
+"piid": 2
+},
+"TRACK_CLEANING_TIME_LEFT": {
+"siid": 36,
+"piid": 1
+},
+"TRACK_CLEANING_LEFT": {
+"siid": 36,
+"piid": 2
+},
+"WASHBOARD_CLEANING_TIME_LEFT": {
+"siid": 37,
+"piid": 1
+},
+"WASHBOARD_CLEANING_LEFT": {
+"siid": 37,
+"piid": 2
+},
+"FILTER_CLEANING_TIME_LEFT": {
+"siid": 38,
+"piid": 1
+},
+"FILTER_CLEANING_LEFT": {
+"siid": 38,
+"piid": 2
+},
+"CLIMBER_OTA_PARAMETER": {
+"siid": 40,
+"piid": 1
+},
+"CLIMBER_OTA_PROGRESS": {
+"siid": 40,
+"piid": 2
+},
+"CLIMBER_OTA_STATUS": {
+"siid": 40,
+"piid": 3
+},
+"CLIMBER_SYSTEM_INFORMATION": {
+"siid": 40,
+"piid": 4
+},
+"CLIMBER_CONNECTION_STATUS": {
+"siid": 40,
+"piid": 5
+},
+"FACTORY_TEST_STATUS": {
+"siid": 99,
+"piid": 1
+},
+"FACTORY_TEST_RESULT": {
+"siid": 99,
+"piid": 3
+},
+"SELF_TEST_STATUS": {
+"siid": 99,
+"piid": 8
+},
+"LSD_TEST_STATUS": {
+"siid": 99,
+"piid": 9
+},
+"DEBUG_SWITCH": {
+"siid": 99,
+"piid": 11
+},
+"SERIAL": {
+"siid": 99,
+"piid": 14
+},
+"CALIBRATION_STATUS": {
+"siid": 99,
+"piid": 15
+},
+"VERSION": {
+"siid": 99,
+"piid": 17
+},
+"PERFORMANCE_SWITCH": {
+"siid": 99,
+"piid": 24
+},
+"AI_TEST_STATUS": {
+"siid": 99,
+"piid": 25
+},
+"PUBLIC_KEY": {
+"siid": 99,
+"piid": 27
+},
+"AUTO_PAIR": {
+"siid": 99,
+"piid": 28
+},
+"MCU_VERSION": {
+"siid": 99,
+"piid": 31
+},
+"MOP_TEST_STATUS": {
+"siid": 99,
+"piid": 35
+},
+"SYSTEM_GUARD_MONITORING": {
+"siid": 99,
+"piid": 40
+},
+"TCP_DUMP": {
+"siid": 99,
+"piid": 36
+},
+"ENABLE_SYSTEM_GUARD": {
+"siid": 99,
+"piid": 49
+},
+"MATTER_QR_CODE": {
+"siid": 99,
+"piid": 50
+},
+"DISABLE_DTOF_VERIFICATION": {
+"siid": 99,
+"piid": 51
+},
+"DISABLE_DTOF_LEFT_BACK_TOF": {
+"siid": 99,
+"piid": 52
+},
+"DEMO_MODE_CONFIGURATION": {
+"siid": 99,
+"piid": 90
+},
+"PLATFORM_NETWORK": {
+"siid": 99,
+"piid": 95
+},
+"WIFI_INFO": {
+"siid": 99,
+"piid": 98
+},
+"DISABLE_PROJECTOR": {
+"siid": 99,
+"piid": 100
+},
+"STREAM_STATUS": {
+"siid": 10001,
+"piid": 1
+},
+"STREAM_AUDIO": {
+"siid": 10001,
+"piid": 2
+},
+"STREAM_RECORD": {
+"siid": 10001,
+"piid": 4
+},
+"TAKE_PHOTO": {
+"siid": 10001,
+"piid": 5
+},
+"STREAM_KEEP_ALIVE": {
+"siid": 10001,
+"piid": 6
+},
+"STREAM_FAULT": {
+"siid": 10001,
+"piid": 7
+},
+"CAMERA_LIGHT_BRIGHTNESS": {
+"siid": 10001,
+"piid": 9
+},
+"CAMERA_LIGHT": {
+"siid": 10001,
+"piid": 10
+},
+"STREAM_VENDOR": {
+"siid": 10001,
+"piid": 11
+},
+"STREAM_PROPERTY": {
+"siid": 10001,
+"piid": 99
+},
+"STREAM_CRUISE_POINT": {
+"siid": 10001,
+"piid": 101
+},
+"STREAM_TASK": {
+"siid": 10001,
+"piid": 103
+},
+"STEAM_HUMAN_FOLLOW": {
+"siid": 10001,
+"piid": 110
+},
+"OBSTACLE_VIDEO_STATUS": {
+"siid": 10001,
+"piid": 111
+},
+"OBSTACLE_VIDEO_DATA": {
+"siid": 10001,
+"piid": 112
+},
+"STREAM_UPLOAD": {
+"siid": 10001,
+"piid": 1003
+},
+"STREAM_CODE": {
+"siid": 10001,
+"piid": 1100
+},
+"STREAM_SET_CODE": {
+"siid": 10001,
+"piid": 1101
+},
+"STREAM_VERIFY_CODE": {
+"siid": 10001,
+"piid": 1102
+},
+"STREAM_RESET_CODE": {
+"siid": 10001,
+"piid": 1103
+},
+"ACCESS_ENABLE_STATUS": {
+"siid": 10001,
+"piid": 1104
+},
+"STREAM_SPACE": {
+"siid": 10001,
+"piid": 2003
+}
+},
+"actions": {
+"START": {
+"siid": 2,
+"aiid": 1
+},
+"PAUSE": {
+"siid": 2,
+"aiid": 2
+},
+"CHARGE": {
+"siid": 3,
+"aiid": 1
+},
+"START_CUSTOM": {
+"siid": 4,
+"aiid": 1
+},
+"STOP": {
+"siid": 4,
+"aiid": 2
+},
+"CLEAR_WARNING": {
+"siid": 4,
+"aiid": 3
+},
+"START_WASHING": {
+"siid": 4,
+"aiid": 4
+},
+"GET_PHOTO_INFO": {
+"siid": 4,
+"aiid": 6
+},
+"SHORTCUTS": {
+"siid": 4,
+"aiid": 8
+},
+"DELETE_DND_TASK": {
+"siid": 5,
+"aiid": 1
+},
+"REQUEST_MAP": {
+"siid": 6,
+"aiid": 1
+},
+"UPDATE_MAP_DATA": {
+"siid": 6,
+"aiid": 2
+},
+"BACKUP_MAP": {
+"siid": 6,
+"aiid": 3
+},
+"WIFI_MAP": {
+"siid": 6,
+"aiid": 4
+},
+"LOCATE": {
+"siid": 7,
+"aiid": 1
+},
+"PLAY_SOUND": {
+"siid": 7,
+"aiid": 2
+},
+"DELETE_SCHEDULED_TASK": {
+"siid": 8,
+"aiid": 1
+},
+"DELETE_CRUISE_SCHEDULE": {
+"siid": 8,
+"aiid": 2
+},
+"DELETE_PET_CRUISE_SCHEDULE": {
+"siid": 8,
+"aiid": 3
+},
+"RESET_MAIN_BRUSH": {
+"siid": 9,
+"aiid": 1
+},
+"RESET_SIDE_BRUSH": {
+"siid": 10,
+"aiid": 1
+},
+"RESET_FILTER": {
+"siid": 11,
+"aiid": 1
+},
+"RESET_SENSOR": {
+"siid": 16,
+"aiid": 1
+},
+"START_AUTO_EMPTY": {
+"siid": 15,
+"aiid": 1
+},
+"RESET_TANK_FILTER": {
+"siid": 17,
+"aiid": 1
+},
+"RESET_MOP_PAD": {
+"siid": 18,
+"aiid": 1
+},
+"RESET_SILVER_ION": {
+"siid": 19,
+"aiid": 1
+},
+"RESET_DETERGENT": {
+"siid": 20,
+"aiid": 1
+},
+"RESET_SQUEEGEE": {
+"siid": 24,
+"aiid": 1
+},
+"RESET_DIRTY_WATER_CHANNEL": {
+"siid": 25,
+"aiid": 1
+},
+"RESET_ONBOARD_DIRTY_WATER_TANK": {
+"siid": 26,
+"aiid": 1
+},
+"RESET_DEODORIZER": {
+"siid": 29,
+"aiid": 1
+},
+"RESET_WHEEL": {
+"siid": 30,
+"aiid": 1
+},
+"RESET_SCALE_INHIBITOR": {
+"siid": 31,
+"aiid": 1
+},
+"RESET_FLUFFING_ROLLER": {
+"siid": 32,
+"aiid": 1
+},
+"RESET_ROLLER_MOP_FILTER": {
+"siid": 33,
+"aiid": 1
+},
+"RESET_WATER_OUTLET_FILTER": {
+"siid": 35,
+"aiid": 1
+},
+"RESET_TRACK_CLEANING": {
+"siid": 36,
+"aiid": 1
+},
+"RESET_WASHBOARD_CLEANING": {
+"siid": 37,
+"aiid": 1
+},
+"RESET_FILTER_CLEANING": {
+"siid": 38,
+"aiid": 1
+},
+"STREAM_VIDEO": {
+"siid": 10001,
+"aiid": 1
+},
+"STREAM_AUDIO": {
+"siid": 10001,
+"aiid": 2
+},
+"STREAM_PROPERTY": {
+"siid": 10001,
+"aiid": 3
+},
+"STREAM_CODE": {
+"siid": 10001,
+"aiid": 4
+},
+"VIDEO_VENDOR": {
+"siid": 10001,
+"aiid": 7
+}
+},
+"state": {
+"UNKNOWN": -1,
+"SWEEPING": 1,
+"IDLE": 2,
+"PAUSED": 3,
+"ERROR": 4,
+"RETURNING": 5,
+"CHARGING": 6,
+"MOPPING": 7,
+"DRYING": 8,
+"WASHING": 9,
+"RETURNING_TO_WASH": 10,
+"BUILDING": 11,
+"SWEEPING_AND_MOPPING": 12,
+"CHARGING_COMPLETED": 13,
+"UPGRADING": 14,
+"CLEAN_SUMMON": 15,
+"STATION_RESET": 16,
+"RETURNING_INSTALL_MOP": 17,
+"RETURNING_REMOVE_MOP": 18,
+"WATER_CHECK": 19,
+"CLEAN_ADD_WATER": 20,
+"WASHING_PAUSED": 21,
+"AUTO_EMPTYING": 22,
+"REMOTE_CONTROL": 23,
+"SMART_CHARGING": 24,
+"SECOND_CLEANING": 25,
+"HUMAN_FOLLOWING": 26,
+"SPOT_CLEANING": 27,
+"RETURNING_AUTO_EMPTY": 28,
+"WAITING_FOR_TASK": 29,
+"STATION_CLEANING": 30,
+"RETURNING_TO_DRAIN": 31,
+"DRAINING": 32,
+"AUTO_WATER_DRAINING": 33,
+"EMPTYING": 34,
+"DUST_BAG_DRYING": 35,
+"DUST_BAG_DRYING_PAUSED": 36,
+"HEADING_TO_EXTRA_CLEANING": 37,
+"EXTRA_CLEANING": 38,
+"FINDING_PET_PAUSED": 95,
+"FINDING_PET": 96,
+"SHORTCUT": 97,
+"MONITORING": 98,
+"MONITORING_PAUSED": 99,
+"INITIAL_DEEP_CLEANING": 101,
+"INITIAL_DEEP_CLEANING_PAUSED": 102,
+"SANITIZING": 103,
+"SANITIZING_WITH_DRY": 104,
+"CHANGING_MOP": 105,
+"CHANGING_MOP_PAUSED": 106,
+"FLOOR_MAINTAINING": 107,
+"FLOOR_MAINTAINING_PAUSED": 108,
+"REMOTE_PICKUP": 109,
+"ARRANGING_ITEMS": 113,
+"PET_GUARDING": 114,
+"PET_GUARDING_PAUSED": 115,
+"INSTALLING_MOP": 116,
+"UNINSTALLING_MOP": 117,
+"INTELLIGENT_RECHARGING": 118,
+"ASSISTED_CLEANING": 120,
+"ENTERING_DOCK": 121,
+"LEAVING_DOCK": 122,
+"NAVIGATING_TO_CLIMBER": 140,
+"DOCKING_TO_CLIMBER": 141,
+"CLIMBER_DOCKED": 142,
+"CLIMBER_NAVIGATING": 143,
+"CLIMBING_STAIRS": 144,
+"CLIMBING_STAIRS_COMPLETED": 145,
+"CLIMBER_AT_DOCK": 146,
+"CLIMBER_LEAVING_DOCK": 147
+},
+"error": {
+"UNKNOWN": -1,
+"NO_ERROR": 0,
+"DROP": 1,
+"CLIFF": 2,
+"BUMPER": 3,
+"GESTURE": 4,
+"BUMPER_REPEAT": 5,
+"DROP_REPEAT": 6,
+"OPTICAL_FLOW": 7,
+"BOX": 8,
+"TANKBOX": 9,
+"WATERBOX_EMPTY": 10,
+"BOX_FULL": 11,
+"BRUSH": 12,
+"SIDE_BRUSH": 13,
+"FAN": 14,
+"LEFT_WHEEL_MOTOR": 15,
+"RIGHT_WHEEL_MOTOR": 16,
+"TURN_SUFFOCATE": 17,
+"FORWARD_SUFFOCATE": 18,
+"CHARGER_GET": 19,
+"BATTERY_LOW": 20,
+"CHARGE_FAULT": 21,
+"BATTERY_PERCENTAGE": 22,
+"HEART": 23,
+"CAMERA_OCCLUSION": 24,
+"MOVE": 25,
+"FLOW_SHIELDING": 26,
+"INFRARED_SHIELDING": 27,
+"CHARGE_NO_ELECTRIC": 28,
+"BATTERY_FAULT": 29,
+"FAN_SPEED_ERROR": 30,
+"LEFTWHELL_SPEED": 31,
+"RIGHTWHELL_SPEED": 32,
+"BMI055_ACCE": 33,
+"BMI055_GYRO": 34,
+"XV7001": 35,
+"LEFT_MAGNET": 36,
+"RIGHT_MAGNET": 37,
+"FLOW_ERROR": 38,
+"INFRARED_FAULT": 39,
+"CAMERA_FAULT": 40,
+"STRONG_MAGNET": 41,
+"WATER_PUMP": 42,
+"RTC": 43,
+"AUTO_KEY_TRIG": 44,
+"P3V3": 45,
+"CAMERA_IDLE": 46,
+"BLOCKED": 47,
+"LDS_ERROR": 48,
+"LDS_BUMPER": 49,
+"WATER_PUMP_2": 50,
+"FILTER_BLOCKED": 51,
+"EDGE": 54,
+"CARPET": 55,
+"LASER": 56,
+"EDGE_2": 57,
+"ULTRASONIC": 58,
+"NO_GO_ZONE": 59,
+"ROUTE": 61,
+"ROUTE_2": 62,
+"BLOCKED_2": 63,
+"BLOCKED_3": 64,
+"RESTRICTED": 65,
+"RESTRICTED_2": 66,
+"RESTRICTED_3": 67,
+"REMOVE_MOP": 68,
+"MOP_REMOVED": 69,
+"MOP_REMOVED_2": 70,
+"MOP_PAD_STOP_ROTATE": 71,
+"MOP_PAD_STOP_ROTATE_2": 72,
+"MOP_INSTALL_FAILED": 74,
+"LOW_BATTERY_TURN_OFF": 75,
+"DIRTY_TANK_NOT_INSTALLED": 76,
+"ROBOT_IN_HIDDEN_ROOM": 78,
+"LDS_FAILED_TO_LIFT": 79,
+"ROBOT_STUCK": 80,
+"ROBOT_STUCK_REPEAT": 81,
+"SLIPPERY_FLOOR": 82,
+"UNKNOWN_ERROR": 84,
+"CHECK_MOP_INSTALL": 85,
+"DIRTY_WATER_TANK_FULL": 86,
+"RETRACTABLE_LEG_STUCK": 88,
+"INTERNAL_ERROR": 89,
+"ROBOT_STUCK_2": 90,
+"ROBOT_STUCK_ON_TABLES": 91,
+"ROBOT_STUCK_ON_PASSAGE": 92,
+"ROBOT_STUCK_ON_THRESHOLD": 93,
+"ROBOT_STUCK_ON_LOW_LYING_AREA": 94,
+"ROBOT_STUCK_ON_RAMP": 95,
+"ROBOT_STUCK_ON_OBSTACLE": 96,
+"ROBOT_STUCK_ON_PET": 97,
+"ROBOT_STUCK_ON_SLIPPERY_SURFACE": 98,
+"ROBOT_STUCK_ON_CARPET": 99,
+"BIN_FULL": 101,
+"BIN_OPEN": 102,
+"BIN_OPEN_2": 103,
+"BIN_FULL_2": 104,
+"WATER_TANK": 105,
+"DIRTY_WATER_TANK": 106,
+"WATER_TANK_DRY": 107,
+"DIRTY_WATER_TANK_2": 108,
+"DIRTY_WATER_TANK_BLOCKED": 109,
+"DIRTY_WATER_TANK_PUMP": 110,
+"MOP_PAD": 111,
+"WET_MOP_PAD": 112,
+"CLEAN_MOP_PAD": 114,
+"CLEAN_TANK_LEVEL": 116,
+"STATION_DISCONNECTED": 117,
+"DIRTY_TANK_LEVEL": 118,
+"WASHBOARD_LEVEL": 119,
+"NO_MOP_IN_STATION": 120,
+"DUST_BAG_FULL": 121,
+"UNKNOWN_WARNING": 122,
+"SELF_TEST_FAILED": 123,
+"WASHBOARD_NOT_WORKING": 124,
+"DRAINAGE_FAILED": 125,
+"MOP_NOT_DETECTED": 126,
+"MOP_HOLDER_ERROR": 127,
+"DOCK_ERROR": 128,
+"WASH_FAILED": 129,
+"ROBOT_STUCK_ON_CURTAIN": 200,
+"EDGE_MOP_STOP_ROTATE": 201,
+"EDGE_MOP_DETACHED": 202,
+"CHASSIS_LIFT_MALFUNCTION": 203,
+"INTERNAL_ERROR_2": 207,
+"MOP_COVER_ERROR": 209,
+"ROLLER_MOP_ERROR": 210,
+"ROBOTIC_ARM_STOPPED": 212,
+"ONBOARD_WATER_TANK_EMPTY": 213,
+"ONBOARD_DIRTY_WATER_TANK_FULL": 214,
+"MOP_NOT_INSTALLED": 215,
+"LDS_ERROR_2": 217,
+"ROLLER_MOP_ERROR_2": 218,
+"FLUFFING_ROLLER_ERROR": 222,
+"MOP_COVER_ERROR_2": 223,
+"MOP_COVER_ERROR_3": 224,
+"ROLLER_MOP_ERROR_3": 225,
+"BLOCKED_BY_OBSTACLE": 226,
+"DRAINAGE_OUTLET_FILTER": 227,
+"MAIN_WHEELS_ERROR": 228,
+"INTERNAL_ERROR_3": 229,
+"INTERNAL_ERROR_4": 230,
+"RETURN_TO_CHARGE_FAILED": 1000
+},
+"suction": {
+"UNKNOWN": -1,
+"QUIET": 0,
+"STANDARD": 1,
+"STRONG": 2,
+"TURBO": 3
+},
+"water": {
+"UNKNOWN": -1,
+"LOW": 1,
+"MEDIUM": 2,
+"HIGH": 3
+},
+"mode": {
+"UNKNOWN": -1,
+"SWEEPING": 0,
+"MOPPING": 1,
+"SWEEPING_AND_MOPPING": 2,
+"MOPPING_AFTER_SWEEPING": 3
+}
+}

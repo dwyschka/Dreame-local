@@ -1,0 +1,53 @@
+name: Dreame Local Cloud
+version: "0.1.0"
+slug: dreame_local_cloud
+description: Ersetzt die Dreame-Cloud lokal (MQTT/TLS) und bindet den Roboter per MQTT-Discovery in Home Assistant ein.
+url: https://github.com/dwyschka/Dreame-local
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+init: false
+panel_icon: mdi:robot-vacuum
+panel_title: Dreame Local
+ingress: true
+ingress_port: 8099
+ports:
+  19973/tcp: 19973
+  8443/tcp: 8443
+ports_description:
+  19973/tcp: Dreame-Geraete-MQTT (DNS-Rewrite hierher)
+  8443/tcp: HTTPS-Upload (Karten/Logs)
+options:
+  device_did: ""
+  device_uid: ""
+  device_model: dreame.vacuum.r2469a
+  region: eu
+  device_name: Dreame
+  mqtt_host: core-mosquitto
+  mqtt_port: 1883
+  mqtt_username: ""
+  mqtt_password: ""
+  discovery_prefix: homeassistant
+  lan_ip: ""
+  broker_port: 19973
+  web_port: 8099
+  upload_port: 8443
+  log_level: info
+schema:
+  device_did: str
+  device_uid: str
+  device_model: str
+  region: str
+  device_name: str
+  mqtt_host: str
+  mqtt_port: port
+  mqtt_username: str
+  mqtt_password: password
+  discovery_prefix: str
+  lan_ip: str
+  broker_port: port
+  web_port: port
+  upload_port: port
+  log_level: list(debug|info|warning|error)

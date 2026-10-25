@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Laufzeitdaten
+data/
+*.log
+capture/
+
+# Lokale Recherche-Artefakte (nicht Teil des Add-ons)
+mitm/
+apk2/
+*.apkm
+data.md
+
+# macOS
+.DS_Store
