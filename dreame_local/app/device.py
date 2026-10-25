@@ -261,7 +261,7 @@ class Device:
             idx = params.get("indexes") or []
             urls = []
             for i in idx:
-                name = f"tmp/{self.did}/{i}"
+                name = f"ali_dreame/{self.uid}/{self.did}/{i}"
                 entry = self._upload_entry(name)
                 urls.append(entry)
             await self._publish(self.result_topic, json.dumps({"id": mid, "result": {"urls": urls}}))
@@ -282,7 +282,12 @@ class Device:
         }
 
     def _upload_result(self, suffix: str, mid: int) -> dict[str, Any]:
-        return {suffix: self._upload_entry(f"logs/{self.did}/{int(time.time())}.{suffix}")}
+        now = time.localtime()
+        name = (
+            f"ali_dreame/{now.tm_year}/{now.tm_mon:02d}/{now.tm_mday:02d}/{self.uid}/"
+            f"{self.did}_{now.tm_hour:02d}{now.tm_min:02d}{now.tm_sec:02d}.{suffix}"
+        )
+        return {suffix: self._upload_entry(name)}
 
     # ----------------------------------------------------------------- commands
     async def send(self, method: str, params: Any, timeout: float = 8.0) -> Any:

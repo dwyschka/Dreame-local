@@ -9,8 +9,9 @@ Akku und alle Status-Sensoren laufen danach **ohne Internet und ohne
 Dreame-App**, direkt in Home Assistant.
 
 > **Status:** Steuerung + Status + Sensoren verifiziert auf
-> `dreame.vacuum.r2469a`, FW `4.3.9_1642`. Karten-Uploads werden
-> gespeichert, aber noch nicht gerendert.
+> `dreame.vacuum.r2469a`, FW `4.3.9_1642`. Zwei Betriebsmodi:
+> **(A)** MQTT-Discovery (eigene Entitäten) und **(B)** Dreame-API-Emulation
+> für die bestehende Tasshack-Integration inkl. Karten-Cards.
 
 ---
 
@@ -26,7 +27,44 @@ Dreame-App**, direkt in Home Assistant.
 
 ---
 
-## 2. Installation (über das Add-on-Repository)
+## 2. Zwei Betriebsmodi
+
+| Modus | Was du bekommst | Voraussetzung |
+|---|---|---|
+| **A – MQTT-Discovery** | Eigene HA-Entitäten (Vacuum, Sensoren, Selects, Buttons), kein HACS nötig | Nur DNS-Rewrite für `*.mt…` |
+| **B – Dreame-API** | Die bestehende **Tasshack-Integration** + Karten-Cards laufen unverändert gegen den lokalen Server | DNS-Rewrite für `eu.iot.dreame.tech` **und** `*.mt…` |
+
+Beides gleichzeitig geht, erzeugt aber doppelte Entitäten. Empfehlung:
+entweder A **oder** B.
+
+### Modus B: Tasshack-Integration lokal
+
+1. Add-on läuft (Broker 19973 + API 13267).
+2. DNS-Rewrites:
+
+   ```
+   eu.iot.dreame.tech          ->  <HA-IP>
+   *.mt.eu.iot.dreame.tech     ->  <HA-IP>
+   ```
+
+3. In HA die Integration **Dreame Vacuum** (HACS) einrichten:
+   - Konto-Typ: **Dreame Home**
+   - Land/Region: `eu`
+   - Benutzername/Passwort: **beliebig** (der lokale Server akzeptiert alles)
+4. Die Integration bekommt von uns `bindDomain = <HA-IP>:19973` und
+   verbindet sich direkt mit dem lokalen Broker. Steuerung, Status und
+   Karten funktionieren wie gewohnt; die Karten-Cards bleiben kompatibel,
+   weil die Integration den Kartenblob selbst dekodiert.
+5. Im Add-on `mqtt_host: ""` setzen, wenn du keine doppelten
+   Discovery-Entitäten willst.
+
+> Die Karte erscheint, sobald der Roboter nach einer Reinigung einen
+> Kartenblob hochgeladen hat (landet unter `/data/uploads`, wird über
+> `getDownloadUrl` ausgeliefert). Ohne Upload bleibt die Karte leer.
+
+---
+
+## 3. Installation (über das Add-on-Repository)
 
 1. **Repository hinzufügen**
    - Einstellungen → Add-ons → Add-on-Store
@@ -50,8 +88,10 @@ Dreame-App**, direkt in Home Assistant.
    mqtt_username: ""
    mqtt_password: ""
    discovery_prefix: "homeassistant"
-   lan_ip: "10.10.48.10"                 # IP des HA-Hosts (für Karten-Uploads)
+   lan_ip: "10.10.48.10"                 # IP des HA-Hosts (BindDomain + Karten-URLs)
+   mac: ""                               # optional, für die Integration
    broker_port: 19973
+   api_port: 13267
    web_port: 8099
    upload_port: 8443
    log_level: "info"
@@ -72,7 +112,7 @@ Dreame-App**, direkt in Home Assistant.
 
 ---
 
-## 3. DNS-Rewrite (der wichtigste Schritt)
+## 4. DNS-Rewrite (der wichtigste Schritt)
 
 Der Roboter fragt `{shard}.mt.{region}.iot.dreame.tech` ab (bei mir
 `10000.mt.eu.iot.dreame.tech`). Diese Namen müssen auf die HA-IP zeigen.
@@ -100,7 +140,7 @@ dig +short 10000.mt.eu.iot.dreame.tech @10.10.48.3
 
 ---
 
-## 4. Roboter umstellen
+## 5. Roboter umstellen
 
 1. Roboter **stromlos** machen (1–2 s warten) und wieder einschalten.
 2. Im Add-on-Log erscheint nach ~1 Minute:
@@ -114,7 +154,7 @@ dig +short 10000.mt.eu.iot.dreame.tech @10.10.48.3
 
 ---
 
-## 5. Entitäten in Home Assistant
+## 6. Entitäten in Home Assistant (Modus A)
 
 | Entität | Typ | Funktion |
 |---|---|---|
@@ -130,7 +170,7 @@ dig +short 10000.mt.eu.iot.dreame.tech @10.10.48.3
 
 ---
 
-## 6. Web-UI und REST
+## 7. Web-UI und REST
 
 Über das Add-on-Panel (Ingress) oder `http://<HA-IP>:8099`:
 
@@ -144,7 +184,7 @@ PUT  /upload/<name>          (für den Roboter, HTTPS auf 8443)
 
 ---
 
-## 7. Fehlerbehebung
+## 8. Fehlerbehebung
 
 | Symptom | Ursache / Lösung |
 |---|---|
@@ -158,13 +198,17 @@ PUT  /upload/<name>          (für den Roboter, HTTPS auf 8443)
 
 ---
 
-## 8. Wie es funktioniert
+## 9. Wie es funktioniert
 
 ```
-Roboter ──TLS/MQTT──► Add-on :19973 ──► Device-Layer (JSON, siid/piid)
-                                            │
-                                            ├─► MQTT-Discovery ──► HA
-                                            └─► Web-UI / REST
+                     ┌──────────── Add-on ────────────┐
+Roboter ─TLS/MQTT───►│ :19973 Broker                 │
+                     │    │                           │
+                     │    ├─ Device-Layer (siid/piid) │
+                     │    ├─ :13267 Dreame-API-Emu ───┼──► Tasshack-Integration (HA)
+                     │    ├─ MQTT-Discovery ──────────┼──► HA-Entitäten (Modus A)
+                     │    └─ :8099 Web-UI / REST      │
+                     └────────────────────────────────┘
 ```
 
 - Der Roboter meldet sich als `device_<did>` an, abonniert
@@ -182,7 +226,7 @@ Mehr Hintergrund, Messungen und die Reverse-Engineering-Notizen:
 
 ---
 
-## 9. Sicherheit und Grenzen
+## 10. Sicherheit und Grenzen
 
 - Der Broker akzeptiert **jede** Authentifizierung. Nur in einem
   vertrauenswürdigen LAN/VLAN betreiben, **nicht** ins Internet öffnen.
@@ -197,7 +241,7 @@ Mehr Hintergrund, Messungen und die Reverse-Engineering-Notizen:
 
 ---
 
-## 10. Repository-Struktur
+## 11. Repository-Struktur
 
 ```
 .
@@ -212,7 +256,7 @@ Mehr Hintergrund, Messungen und die Reverse-Engineering-Notizen:
 └── tools/                   # Forschungs-Skripte (Capture, eMudhra, MQTT-Observer)
 ```
 
-## 11. Entwicklung ohne HA
+## 12. Entwicklung ohne HA
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate

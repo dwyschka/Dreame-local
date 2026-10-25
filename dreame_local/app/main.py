@@ -15,6 +15,7 @@ from pathlib import Path
 
 from aiohttp import web
 
+from api import DreameApi
 from broker import MqttBroker
 from device import Device
 from ha import HaBridge
@@ -44,6 +45,8 @@ def load_options() -> dict:
         "web_port",
         "upload_port",
         "discovery_prefix",
+        "api_port",
+        "mac",
         "log_level",
     ):
         env = os.environ.get(key.upper())
@@ -96,6 +99,7 @@ async def amain() -> int:
     broker_port = int(opts.get("broker_port") or 19973)
     web_port = int(opts.get("web_port") or 8099)
     upload_port = int(opts.get("upload_port") or 8443)
+    api_port = int(opts.get("api_port") or 13267)
     lan_ip = str(opts.get("lan_ip") or "")
     upload_base = f"https://{lan_ip}:{upload_port}" if lan_ip else ""
 
@@ -149,6 +153,15 @@ async def amain() -> int:
         ha.start()
 
     web_ui = Web(device, web_port, data_dir)
+    api = DreameApi(
+        device,
+        api_port,
+        cert,
+        key,
+        data_dir,
+        public_host=lan_ip,
+        mac=str(opts.get("mac") or ""),
+    )
 
     async def safe_upload() -> None:
         try:
@@ -156,14 +169,22 @@ async def amain() -> int:
         except OSError as exc:
             log.warning("HTTPS-Upload auf :%d nicht verfügbar (%s) – Karten-Uploads bleiben aus", upload_port, exc)
 
+    async def safe_api() -> None:
+        try:
+            await api.start()
+        except OSError as exc:
+            log.warning("Dreame-API auf :%d nicht verfügbar (%s)", api_port, exc)
+
     tasks = [
         asyncio.create_task(broker.start(), name="broker"),
         asyncio.create_task(web_ui.start(), name="web"),
         asyncio.create_task(safe_upload(), name="upload"),
+        asyncio.create_task(safe_api(), name="api"),
     ]
     log.info(
-        "Bereit: Broker :%d, Web :%d, Upload :%d, Discovery %s, Auto-DID=%s",
+        "Bereit: Broker :%d, API :%d, Web :%d, Upload :%d, Discovery %s, Auto-DID=%s",
         broker_port,
+        api_port,
         web_port,
         upload_port,
         "an" if ha else "aus",

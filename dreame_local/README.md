@@ -53,6 +53,25 @@ log_level: "info"
 - **Selects**: Saugstufe, Wassermenge, Modus
 - **Buttons**: Finden, Absaugen, Mopp waschen
 
+## Kompatibel zur Tasshack-Integration
+
+Das Add-on emuliert zusätzlich die Dreame-Cloud-API auf Port **13267**
+(`/dreame-auth/oauth/token`, `device/listV2`, `device/info`, `devOTCInfo`,
+`sendCommand`, `iotfile/getDownloadUrl`, `file-bridge/...`). Zeigt
+`eu.iot.dreame.tech` per DNS auf den HA-Host, läuft die bestehende
+**Dreame-Vacuum-Integration (HACS)** unverändert dagegen – inklusive
+Karten-Cards. Die Integration bekommt `bindDomain = <lan_ip>:19973` und
+verbindet sich direkt mit dem lokalen Broker.
+
+Für diesen Modus zusätzlich umleiten:
+
+```
+eu.iot.dreame.tech  ->  <IP des HA-Hosts>
+```
+
+und im Add-on `mqtt_host: ""` setzen, wenn keine doppelten
+Discovery-Entitäten entstehen sollen.
+
 ## Hinweise
 
 - Während der lokale Broker läuft, ist der Roboter in der Dreame-App
