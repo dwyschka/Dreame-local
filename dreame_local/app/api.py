@@ -106,7 +106,9 @@ class DreameApi:
 
     async def token(self, request: web.Request) -> web.Response:
         log.info("Login von %s", request.remote)
-        return _ok(
+        # ACHTUNG: Die Integration liest access_token/refresh_token/uid/region
+        # auf der obersten Ebene (OAuth-Standard), nicht unter "data".
+        return web.json_response(
             {
                 "access_token": TOKEN,
                 "refresh_token": REFRESH,
@@ -115,6 +117,9 @@ class DreameApi:
                 "scope": "all",
                 "region": self.dev.region or "eu",
                 "tenant_id": "000000",
+                "uid": self.dev.uid or str(self.dev.did),
+                "country": "de",
+                "lang": "de",
             }
         )
 

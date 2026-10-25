@@ -121,14 +121,17 @@ async def amain() -> int:
         await device.on_message(topic, payload)
 
     async def on_connect(client_id: str, username: str | None) -> None:
-        if client_id.startswith("device_"):
-            device.did = client_id[len("device_"):] or device.did
-        elif username:
-            device.did = username
+        # Nur der Roboter meldet sich als "device_<did>". Andere Clients
+        # (z. B. die Tasshack-Integration) duerfen den Zustand nicht aendern.
+        if not client_id.startswith("device_"):
+            return
+        device.did = client_id[len("device_"):] or device.did
         log.info("Roboter verbunden: did=%s", device.did)
         await device.set_online(True)
 
     async def on_disconnect(client_id: str, username: str | None) -> None:
+        if not client_id.startswith("device_"):
+            return
         log.info("Roboter getrennt: %s", client_id)
         await device.set_online(False)
 
