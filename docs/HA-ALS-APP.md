@@ -159,3 +159,51 @@ Firmware-Updates gebraucht.
 | Karte leer | Einmal reinigen lassen; `MAP_LIST` im Log? Datei in `/data/uploads`? |
 | Doppelte Entitäten | `mqtt_host` im Add-on leeren |
 | App geht nicht mehr | `eu.iot.dreame.tech`-Rewrite entfernen (dann ist die API wieder Cloud) |
+
+---
+
+## 8. WLAN zurücksetzen / wechseln
+
+Ein WLAN-Reset ist **kein** Firmware-Reset: Karte und Einstellungen bleiben
+erhalten, nur die Netzwerkdaten werden gelöscht.
+
+### Variante 1: Tastenkombination (ohne Datenverlust)
+
+Am Roboter **Spot Cleaning + Dock** gleichzeitig ~3 Sekunden halten, bis
+die Sprachansage „Waiting for network configuration" kommt und die
+WLAN-LED **langsam blinkt**.
+
+- L10s-Familie (L10s Ultra, L10s Pro, L10 Pro, Z10 Pro): so dokumentiert
+- L10s Ultra Gen 2: beide Tasten sind vorhanden; falls die Kombination
+  nicht greift, ist laut Handbuch der offizielle Weg, in der App erneut
+  „Gerät hinzufügen" → QR-Code scannen (Provisioning per BLE)
+
+Danach verbindet sich der Roboter mit dem **2,4-GHz**-Netz (kein 5 GHz,
+WPA2, kein Captive Portal, keine AP-Isolation).
+
+### Variante 2: Routerwechsel ohne Reset (bester Weg ohne App)
+
+Wenn nur der Router/AP getauscht wird: **SSID, Passwort, Verschlüsselung
+(WPA2) und 2,4 GHz exakt gleich lassen**. Der Roboter verbindet sich
+automatisch, es ist kein Reset und keine App nötig.
+
+### Variante 3: Werksreset (alles löschen)
+
+Abdeckung öffnen, **Reset-Taste** mit einem Stift/Büroklammer ~3 s halten
+→ „Start to restore factory settings". Dabei werden **Karte, Zeitpläne und
+Einstellungen gelöscht**. Danach ist eine komplette Neueinrichtung über
+die App nötig (die einzige Situation, in der die App noch gebraucht wird).
+
+### Wichtig bei Provisioning über die App
+
+Vorher die DNS-Rewrites für `eu.iot.dreame.tech` und
+`*.mt.eu.iot.dreame.tech` **deaktivieren** (oder auf die echte Cloud
+zeigen lassen). Sonst landet die App beim Koppeln auf unserem lokalen
+Server und die Einrichtung schlägt fehl. Nach dem Provisioning die
+Rewrites wieder setzen — der Roboter verbindet sich dann mit dem Add-on.
+
+### Kein Software-Reset möglich
+
+Das Dreame-Protokoll hat keine Aktion zum Zurücksetzen der WLAN-Daten
+(weder über die Cloud-API noch über MQTT). Es geht nur über die Tasten
+oder die App.
