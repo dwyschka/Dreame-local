@@ -250,7 +250,11 @@ class DreameApi:
         target = root / name
         if name and target.is_file():
             return name
-        candidates = [p for p in root.rglob("*") if p.is_file()] if root.exists() else []
+        candidates = (
+            [p for p in root.rglob("*") if p.is_file() and not p.name.startswith("__")]
+            if root.exists()
+            else []
+        )
         if not candidates:
             log.warning("Datei %r fehlt und es gibt keine Uploads", name)
             return name

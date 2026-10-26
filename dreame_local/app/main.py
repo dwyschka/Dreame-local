@@ -162,6 +162,12 @@ async def amain() -> int:
 
     data_dir = Path(os.environ.get("DATA_DIR", "/data"))
     data_dir.mkdir(parents=True, exist_ok=True)
+    # Testdateien aus dem Upload-Verzeichnis entfernen (nie als Karte ausliefern).
+    for junk in ("__test", "__selftest"):
+        try:
+            (data_dir / "uploads" / junk).unlink()
+        except OSError:
+            pass
     cert = str(HERE / "certs" / "server_chain.pem")
     key = str(HERE / "certs" / "server.key")
 
