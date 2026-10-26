@@ -289,10 +289,18 @@ class Device:
         if not self.upload_base:
             return {"ok": False, "obj_name": name}
         expires = int(time.time()) + 3600
+        # Query-Parameter wie bei einer echten OSS-Presigned-URL. Der Roboter
+        # bzw. das OSS-SDK wertet sie ggf. aus; unser Upload-Server ignoriert
+        # sie einfach.
+        query = (
+            f"Expires={expires}"
+            f"&OSSAccessKeyId=local"
+            f"&Signature=local"
+        )
         entry: dict[str, Any] = {
             # Gleiche Pfadform wie die echte OSS-URL:
             # https://dreame-eu.iot.dreame.tech/iot/tmp/000000/ali_dreame/...
-            "url": f"{self.upload_base}/iot/tmp/000000/{name}",
+            "url": f"{self.upload_base}/iot/tmp/000000/{name}?{query}",
             "method": "PUT",
             "ok": True,
             "obj_name": name,

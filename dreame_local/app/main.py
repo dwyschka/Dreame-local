@@ -217,6 +217,13 @@ async def amain() -> int:
         asyncio.create_task(safe_upload(), name="upload"),
         asyncio.create_task(safe_api(), name="api"),
     ]
+    if upload_base:
+        log.info("Upload-Basis: %s (Presigned-URLs mit index + OSS-Query)", upload_base)
+    else:
+        log.warning(
+            "lan_ip ist leer – der Roboter bekommt keine Upload-URLs, "
+            "die Karte kann nicht ankommen"
+        )
     log.info(
         "Bereit: Broker :%d, API :%d, Web :%d, Upload :%d, Discovery %s, Auto-DID=%s",
         broker_port,
