@@ -11,6 +11,8 @@ import logging
 import ssl
 import struct
 from dataclasses import dataclass, field
+
+import events
 from typing import Awaitable, Callable
 
 log = logging.getLogger("broker")
@@ -108,6 +110,7 @@ class MqttBroker:
                     writer.write(_packet(2, 0, b"\x00\x00"))
                     await writer.drain()
                     log.info("CONNECT %s user=%s von %s", sess.client_id, sess.username, peer)
+                    events.add("mqtt_connect", client_id=sess.client_id, peer=peer)
                     if self.on_connect:
                         await self.on_connect(sess.client_id, sess.username or None)
                 elif typ == 8:
@@ -121,6 +124,7 @@ class MqttBroker:
                             sess.filters.append(flt)
                         granted.append(1)
                         log.info("SUBSCRIBE %s von %s", flt, sess.client_id)
+                        events.add("subscribe", client_id=sess.client_id, topic=flt)
                     writer.write(_packet(9, 0, pid + bytes(granted)))
                     await writer.drain()
                 elif typ == 3:
@@ -157,6 +161,7 @@ class MqttBroker:
                 self.sessions.pop(sess.client_id, None)
             writer.close()
             log.info("Client getrennt: %s (%s)", sess.client_id, peer)
+            events.add("mqtt_disconnect", client_id=sess.client_id, peer=peer)
             if self.on_disconnect:
                 await self.on_disconnect(sess.client_id, sess.username or None)
 
@@ -194,6 +199,12 @@ class MqttBroker:
         if flags & 0x40:
             ln = int.from_bytes(body[p : p + 2], "big")
             p += 2 + ln
+
+    def clients(self) -> list[dict]:
+        return [
+            {"client_id": s.client_id, "peer": s.peer, "topics": s.filters}
+            for s in self.sessions.values()
+        ]
 
     async def publish(self, topic: str, payload: bytes | str, qos: int = 1) -> int:
         if isinstance(payload, str):

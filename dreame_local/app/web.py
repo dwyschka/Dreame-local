@@ -7,6 +7,7 @@ from typing import Any
 
 from aiohttp import web
 
+import events
 from device import Device, MODE, SUCTION, WATER
 from device import MODE, SUCTION, WATER
 
@@ -46,8 +47,11 @@ input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px soli
   <select id="water"><option value="">Wassermenge…</option><option>low</option><option>medium</option><option>high</option></select>
   <select id="mode"><option value="">Modus…</option><option>sweeping</option><option>mopping</option><option>sweeping_and_mopping</option></select>
 </div>
-<div class="row"><button id="refresh">Aktualisieren</button></div>
+<div class="row"><button id="refresh">Aktualisieren</button>
+<button id="mapreq">Karte anfordern</button></div>
 <pre id="log"></pre>
+<h3 style="font-size:1rem">Diagnose</h3>
+<pre id="diag">…</pre>
 <script>
 async function j(p, opt){ const r = await fetch(p, opt); return r.json(); }
 function card(k,v){ return `<div class="card"><div class="k">${k}</div><div class="v">${v??'–'}</div></div>`; }
@@ -78,7 +82,30 @@ for (const [id,prop] of [['suction','SUCTION_LEVEL'],['water','WATER_VOLUME'],['
     await j('api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({set:prop,value:el.value})});
     setTimeout(tick,500); };
 }
-document.getElementById('refresh').onclick=tick;
+document.getElementById('mapreq').onclick=async()=>{
+  const s=await j('api/state');
+  await j('api/command',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({method:'action',params:{did:String(s.did),siid:6,aiid:1,
+      in:[{piid:2,value:'{"frame_type":"I"}'}]}})});
+  setTimeout(diag,1000);
+};
+async function diag(){
+  try{
+    const d=await j('api/diagnostics');
+    const lines=[];
+    lines.push('Clients:');
+    (d.clients||[]).forEach(c=>lines.push(`  ${c.client_id}  ${c.peer}  ${(c.topics||[]).join(', ')}`));
+    lines.push('', 'Uploads:');
+    (d.uploads||[]).slice(0,10).forEach(u=>lines.push(`  ${u.name}  ${u.size} B  ${new Date(u.mtime*1000).toLocaleString()}`));
+    lines.push('', 'Events:');
+    (d.events||[]).slice(0,30).forEach(e=>{
+      const {ts,kind,...rest}=e; lines.push(`  ${ts} ${kind} ${JSON.stringify(rest).slice(0,220)}`);
+    });
+    document.getElementById('diag').textContent=lines.join('\n');
+  }catch(e){ document.getElementById('diag').textContent='Diagnose nicht verfügbar'; }
+}
+document.getElementById('refresh').onclick=()=>{tick();diag();};
+diag(); setInterval(diag, 5000);
 tick(); setInterval(tick, 3000);
 </script></body></html>"""
 
@@ -95,8 +122,9 @@ async def ingress_middleware(request: web.Request, handler):
 
 
 class Web:
-    def __init__(self, device: Device, port: int = 8099, data_dir: Path | None = None) -> None:
+    def __init__(self, device: Device, port: int = 8099, data_dir: Path | None = None, clients_fn=None) -> None:
         self.dev = device
+        self.clients_fn = clients_fn
         self.port = port
         self.data_dir = data_dir or Path("/data")
         self.app = web.Application(client_max_size=512 * 1024 * 1024, middlewares=[ingress_middleware])
@@ -105,6 +133,7 @@ class Web:
                 web.get("/", self.index),
                 web.get("/api/state", self.state),
                 web.get("/api/uploads", self.uploads),
+                web.get("/api/diagnostics", self.diagnostics),
                 web.post("/api/command", self.command),
                 web.put("/upload/{name:.*}", self.upload),
             ]
@@ -134,6 +163,19 @@ class Web:
                                   "mtime": int(st.st_mtime)})
         files.sort(key=lambda x: x["mtime"], reverse=True)
         return web.json_response({"uploads": files, "log": str(self.data_dir / "api.log")})
+
+    async def diagnostics(self, request: web.Request) -> web.Response:
+        root = self.data_dir / "uploads"
+        uploads = []
+        if root.exists():
+            for p in root.rglob("*"):
+                if p.is_file():
+                    st = p.stat()
+                    uploads.append({"name": str(p.relative_to(root)), "size": st.st_size,
+                                    "mtime": int(st.st_mtime)})
+        uploads.sort(key=lambda x: x["mtime"], reverse=True)
+        clients = self.clients_fn() if self.clients_fn else []
+        return web.json_response({"clients": clients, "events": events.all(), "uploads": uploads})
 
     async def command(self, request: web.Request) -> web.Response:
         body: dict[str, Any] = await request.json()

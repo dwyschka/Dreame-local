@@ -14,6 +14,7 @@ from typing import Any
 
 from aiohttp import web
 
+import events
 from device import Device
 
 log = logging.getLogger("api")
@@ -39,6 +40,7 @@ async def api_log_middleware(request: web.Request, handler):
         pass
     response = await handler(request)
     try:
+        events.add("api", path=request.path, status=response.status)
         logfile = request.app["logfile"]
         with open(logfile, "a") as f:
             f.write(
@@ -255,6 +257,7 @@ class DreameApi:
         host = self.public_host or (request.host.split(":")[0] if request.host else "localhost")
         url = f"https://{host}:{self.port}/files/{resolved}"
         log.info("getDownloadUrl %r -> %s", name, url)
+        events.add("map_url", requested=name, served=resolved)
         return _ok(url)
 
     async def device_file(self, request: web.Request) -> web.Response:

@@ -16,6 +16,7 @@ from pathlib import Path
 from aiohttp import web
 
 from api import DreameApi
+import events
 from broker import MqttBroker
 from device import Device
 from ha import HaBridge
@@ -69,6 +70,7 @@ async def upload_server(device: Device, port: int, cert: str, key: str, data_dir
                 f.write(chunk)
                 size += len(chunk)
         logging.getLogger("upload").info("Upload %s (%d Bytes)", target, size)
+        events.add("upload", name=name, size=size)
         return web.Response(text="ok")
 
     app.add_routes([web.put("/upload/{name:.*}", put), web.post("/upload/{name:.*}", put)])
@@ -155,7 +157,7 @@ async def amain() -> int:
         device.listeners.append(_on_state)
         ha.start()
 
-    web_ui = Web(device, web_port, data_dir)
+    web_ui = Web(device, web_port, data_dir, clients_fn=broker.clients)
     api = DreameApi(
         device,
         api_port,

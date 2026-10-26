@@ -8,6 +8,8 @@ import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
+import events
+
 log = logging.getLogger("device")
 
 MAP = json.loads((Path(__file__).parent / "mapping.json").read_text())
@@ -218,6 +220,7 @@ class Device:
             fut = self._pending.pop(rid)
             if not fut.done():
                 fut.set_result(msg.get("data", {}).get("result"))
+            events.add("command_result", id=rid)
         data = msg.get("data", {})
         result = data.get("result")
         # get_properties liefert [{siid,piid,value,code}] -> direkt in den Zustand
@@ -252,6 +255,7 @@ class Device:
 
         if method and str(method).startswith("_sync."):
             log.info("Sync-Anfrage: %s %s", method, params)
+            events.add("sync_request", method=method, params=params)
         if method == "_sync.gen_presigned_url" and isinstance(params, dict):
             suffix = params.get("suffix") or "upload.bin"
             await self._publish(self.result_topic, json.dumps({"id": mid, "result": self._upload_result(suffix, mid)}))
@@ -304,6 +308,7 @@ class Device:
         fut = asyncio.get_running_loop().create_future()
         self._pending[rid] = fut
         log.info("-> %s", method)
+        events.add("command", method=method)
         if not await self._publish(self.ctrl_topic, json.dumps(body)):
             self._pending.pop(rid, None)
             raise RuntimeError("Roboter nicht verbunden")
