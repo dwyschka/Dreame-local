@@ -104,6 +104,7 @@ class Web:
             [
                 web.get("/", self.index),
                 web.get("/api/state", self.state),
+                web.get("/api/uploads", self.uploads),
                 web.post("/api/command", self.command),
                 web.put("/upload/{name:.*}", self.upload),
             ]
@@ -121,6 +122,18 @@ class Web:
 
     async def state(self, request: web.Request) -> web.Response:
         return web.json_response(self.dev.snapshot())
+
+    async def uploads(self, request: web.Request) -> web.Response:
+        root = self.data_dir / "uploads"
+        files = []
+        if root.exists():
+            for p in root.rglob("*"):
+                if p.is_file():
+                    st = p.stat()
+                    files.append({"name": str(p.relative_to(root)), "size": st.st_size,
+                                  "mtime": int(st.st_mtime)})
+        files.sort(key=lambda x: x["mtime"], reverse=True)
+        return web.json_response({"uploads": files, "log": str(self.data_dir / "api.log")})
 
     async def command(self, request: web.Request) -> web.Response:
         body: dict[str, Any] = await request.json()

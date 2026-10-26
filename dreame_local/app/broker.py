@@ -120,7 +120,7 @@ class MqttBroker:
                         if flt not in sess.filters:
                             sess.filters.append(flt)
                         granted.append(1)
-                        log.info("SUBSCRIBE %s", flt)
+                        log.info("SUBSCRIBE %s von %s", flt, sess.client_id)
                     writer.write(_packet(9, 0, pid + bytes(granted)))
                     await writer.drain()
                 elif typ == 3:

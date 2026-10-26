@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,36 @@ def _ok(data: Any = None) -> web.Response:
     return web.json_response(body)
 
 
+@web.middleware
+async def api_log_middleware(request: web.Request, handler):
+    """Schreibt jeden API-Aufruf nach /data/api.log (Diagnose)."""
+    body = ""
+    try:
+        body = await request.text()
+    except Exception:
+        pass
+    response = await handler(request)
+    try:
+        logfile = request.app["logfile"]
+        with open(logfile, "a") as f:
+            f.write(
+                json.dumps(
+                    {
+                        "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "method": request.method,
+                        "path": request.path,
+                        "body": body[:800],
+                        "status": response.status,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+    except Exception:
+        pass
+    return response
+
+
 class DreameApi:
     def __init__(
         self,
@@ -46,10 +77,12 @@ class DreameApi:
         self.data_dir = data_dir
         self.public_host = public_host
         self.mac = mac
-        self.app = web.Application(client_max_size=64 * 1024 * 1024)
+        self.app = web.Application(client_max_size=64 * 1024 * 1024, middlewares=[api_log_middleware])
+        self.app["logfile"] = str(data_dir / "api.log")
         self.app.add_routes(
             [
                 web.get("/files/{name:.*}", self.file),
+                web.get("/api/uploads", self.uploads),
                 web.post("/dreame-auth/oauth/token", self.token),
                 web.post("/dreame-auth/oauth/refresh", self.token),
                 web.post("/dreame-user-iot/iotuserbind/device/listV2", self.devices),
@@ -57,6 +90,7 @@ class DreameApi:
                 web.post("/dreame-user-iot/iotuserbind/device/info", self.device_info),
                 web.post("/dreame-user-iot/iotstatus/devOTCInfo", self.otc_info),
                 web.post("/dreame-user-iot/iotstatus/props", self.props),
+                web.post("/dreame-user-iot/iotstatus/getDeviceData", self.device_data),
                 web.post("/dreame-user-iot/iotfile/getDownloadUrl", self.download_url),
                 web.post("/dreame-user-iot/iotfile/getOss1dDownloadUrl", self.download_url),
                 web.post("/file-bridge/user/getDeiviceFile", self.device_file),
@@ -98,11 +132,26 @@ class DreameApi:
 
     # ------------------------------------------------------------------ routes
     async def file(self, request: web.Request) -> web.Response:
-        name = request.match_info["name"].replace("..", "_")
+        name = request.match_info["name"].replace("..", "_").lstrip("/")
         target = self.data_dir / "uploads" / name
         if not target.exists():
+            target = self.data_dir / "uploads" / self._resolve(name)
+        if not target.exists():
+            log.warning("GET /files/%s: nicht gefunden", name)
             raise web.HTTPNotFound()
         return web.FileResponse(target)
+
+    async def uploads(self, request: web.Request) -> web.Response:
+        root = self.data_dir / "uploads"
+        files = []
+        if root.exists():
+            for p in root.rglob("*"):
+                if p.is_file():
+                    st = p.stat()
+                    files.append({"name": str(p.relative_to(root)), "size": st.st_size,
+                                  "mtime": int(st.st_mtime)})
+        files.sort(key=lambda x: x["mtime"], reverse=True)
+        return web.json_response({"files": files})
 
     async def token(self, request: web.Request) -> web.Response:
         log.info("Login von %s", request.remote)
@@ -150,22 +199,63 @@ class DreameApi:
 
     async def props(self, request: web.Request) -> web.Response:
         body = await request.json()
-        keys = body.get("keys") or []
+        keys = body.get("keys")
+        if isinstance(keys, str):
+            keys = [keys]
+        keys = keys or []
         log.info("props %s", keys)
-        data: dict[str, Any] = {}
         out = []
         for key in keys:
-            value = self.dev.get(str(key).upper())
-            if value is not None:
-                out.append({"piid": 1, "value": value, "siid": 1, "did": self.dev.did})
-                data[str(key)] = value
-        return _ok({"props": out, **data})
+            key = str(key)
+            parts = key.split(".")
+            if len(parts) == 2:
+                siid, piid = parts
+                value = self.dev.props.get(f"{siid}.{piid}")
+                item = {"siid": int(siid), "piid": int(piid), "value": value, "code": 0,
+                        "did": self.dev.did}
+                try:
+                    item["updateDate"] = int(time.time() * 1000)
+                except Exception:
+                    pass
+                out.append(item)
+            else:
+                value = self.dev.get(key.upper())
+                out.append({"piid": 0, "siid": 0, "value": value, "code": 0, "did": self.dev.did})
+        # Die Integration erwartet data[0].value
+        return _ok(out)
+
+    async def device_data(self, request: web.Request) -> web.Response:
+        """Historische Property-Daten (Map-Frames). Lokal gibt es keinen Verlauf."""
+        body = await request.json()
+        log.info("getDeviceData siid=%s piid=%s limit=%s", body.get("siid"), body.get("piid"), body.get("limit"))
+        return _ok({"list": []})
+
+    def _resolve(self, name: str) -> str:
+        """Existiert die Datei? Sonst die neueste hochgeladene Datei nehmen."""
+        root = self.data_dir / "uploads"
+        target = root / name
+        if name and target.is_file():
+            return name
+        candidates = [p for p in root.rglob("*") if p.is_file()] if root.exists() else []
+        if not candidates:
+            log.warning("Datei %r fehlt und es gibt keine Uploads", name)
+            return name
+        newest = max(candidates, key=lambda p: p.stat().st_mtime)
+        rel = str(newest.relative_to(root))
+        if name:
+            log.warning("Datei %r fehlt, liefere stattdessen %r", name, rel)
+        else:
+            log.info("Kein Dateiname angegeben, liefere %r", rel)
+        return rel
 
     async def download_url(self, request: web.Request) -> web.Response:
         body = await request.json()
         name = str(body.get("filename") or "").lstrip("/")
-        log.info("getDownloadUrl %s", name)
-        return _ok(f"https://{self.public_host}:{self.port}/files/{name}")
+        resolved = self._resolve(name)
+        host = self.public_host or (request.host.split(":")[0] if request.host else "localhost")
+        url = f"https://{host}:{self.port}/files/{resolved}"
+        log.info("getDownloadUrl %r -> %s", name, url)
+        return _ok(url)
 
     async def device_file(self, request: web.Request) -> web.Response:
         body = await request.json()
@@ -187,7 +277,7 @@ class DreameApi:
         method = data.get("method")
         params = data.get("params")
         rid = data.get("id") or body.get("id")
-        log.info("sendCommand %s", method)
+        log.info("sendCommand %s %s", method, json.dumps(params)[:300] if params is not None else "")
         try:
             result = await self.dev.send(str(method), params, timeout=15)
             return web.json_response({"code": 0, "success": True, "data": {"id": rid, "result": result}})
