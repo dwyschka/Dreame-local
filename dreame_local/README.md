@@ -67,7 +67,16 @@ log_level: "info"
 
 Die ersten Map-Daten kommen nach **einer** Reinigung: Der Roboter lädt den
 Kartenblob zu diesem Add-on (`/data/uploads`), die Integration holt ihn
-über `getDownloadUrl` und rendert ihn. Dashboard-Beispiele:
+über `getDownloadUrl` und rendert ihn.
+
+Der Roboter fordert Upload-URLs nur selten an (etwa stündlich, nach einem
+Neustart oder nach einer Kartenänderung) und merkt sie sich. Nach einem
+Add-on-Update deshalb einmal den Roboter neu starten oder kurz reinigen
+lassen. Diagnose: Web-UI → „Karte anfordern“, dann unter *Diagnose* die
+Events `presigned_urls`, `upload` und `map_url` prüfen; die Dateien liegen
+im Add-on unter `/data/uploads`.
+
+Dashboard-Beispiele:
 [docs/HA-ALS-APP.md](https://github.com/dwyschka/Dreame-local/blob/main/docs/HA-ALS-APP.md)
 
 ## Hinweise

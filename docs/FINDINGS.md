@@ -393,3 +393,28 @@ Uploads werden unter `/data/uploads` gespeichert (Rendering noch offen).
 
 Grenzen: Dreame-App zeigt das Geraet offline; Zeitplaene/DND werden nicht
 verwaltet; Karten werden nicht gerendert.
+
+### Presigned-URL-Format (Karten-Upload)
+
+Der Roboter fordert beim Start bzw. etwa stündlich per
+`/query/...` → `_sync.gen_tmp_presigned_url {"indexes":[0,1]}` Upload-URLs
+an und erwartet die Antwort auf `/result/<did>/`:
+
+```json
+{"id":52,"result":{"urls":[
+  {"url":"https://…/iot/tmp/000000/ali_dreame/VB847569/909669328/0",
+   "method":"PUT","ok":true,
+   "obj_name":"ali_dreame/VB847569/909669328/0",
+   "expires_time":1793106404,"pwd":"…","index":0}
+]}}
+```
+
+Entscheidend ist **`index`**: Ohne dieses Feld ordnet der Roboter die URL
+keiner Kartendatei zu, verwirft sie stillschweigend und lädt nie hoch.
+Zusätzlich muss die Download-URL der Integration eine Query enthalten
+(`?Expires=…`), weil sie beim Wiederverwenden `&current=<ts>` anhängt –
+ohne `?` landet das im Pfad und ergibt 404.
+
+Ablauf: `REQUEST_MAP` (siid 6/aiid 1) → Roboter lädt Dateien 0…9 hoch →
+`_sync.update_vacuum_mapinfo` (Status) → Integration holt die Dateien per
+`getDownloadUrl`/`getOss1dDownloadUrl` und rendert die Karte.

@@ -141,6 +141,10 @@ class MqttBroker:
                         writer.write(_packet(5, 0, pid))
                         await writer.drain()
                     await self.on_publish(topic, payload)
+                    # Nachricht an die uebrigen Abonnenten weiterleiten.
+                    # Ohne das erreichen Status-/Karten-Updates des Roboters
+                    # nie die Tasshack-Integration (die lauscht auf /status/).
+                    await self.publish(topic, payload, qos=1, exclude=sess)
                 elif typ == 6:  # PUBREL
                     writer.write(_packet(7, 0, body[:2]))
                     await writer.drain()
@@ -206,11 +210,15 @@ class MqttBroker:
             for s in self.sessions.values()
         ]
 
-    async def publish(self, topic: str, payload: bytes | str, qos: int = 1) -> int:
+    async def publish(
+        self, topic: str, payload: bytes | str, qos: int = 1, exclude: Session | None = None
+    ) -> int:
         if isinstance(payload, str):
             payload = payload.encode()
         sent = 0
         for sess in list(self.sessions.values()):
+            if sess is exclude:
+                continue
             if not sess.writer or not any(topic_matches(f, topic) for f in sess.filters):
                 continue
             try:

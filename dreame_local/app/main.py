@@ -58,29 +58,60 @@ def load_options() -> dict:
 
 async def upload_server(device: Device, port: int, cert: str, key: str, data_dir: Path) -> None:
     """HTTPS-Endpunkt, an den der Roboter Karten/Logs hochlaedt."""
-    app = web.Application(client_max_size=1024 * 1024 * 1024)
+    ulog = logging.getLogger("upload")
+    root = data_dir / "uploads"
+
+    @web.middleware
+    async def upload_log(request: web.Request, handler):
+        ulog.info(
+            "-> %s %s von %s (%s Bytes, %s)",
+            request.method,
+            request.path_qs,
+            request.remote,
+            request.content_length,
+            request.headers.get("User-Agent", "?"),
+        )
+        try:
+            response = await handler(request)
+        except Exception as exc:  # pragma: no cover
+            ulog.warning("Upload-Fehler %s %s: %s", request.method, request.path_qs, exc)
+            events.add("upload_error", path=request.path, error=str(exc))
+            raise
+        ulog.info("<- %s %s", response.status, request.path_qs)
+        return response
+
+    app = web.Application(client_max_size=1024 * 1024 * 1024, middlewares=[upload_log])
 
     async def put(request: web.Request) -> web.Response:
-        name = request.match_info["name"].replace("..", "_")
-        target = data_dir / "uploads" / name
+        name = request.match_info["name"].replace("..", "_").lstrip("/")
+        target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)
         size = 0
-        with target.open("wb") as f:
+        tmp = target.with_suffix(target.suffix + ".part")
+        with tmp.open("wb") as f:
             async for chunk in request.content.iter_chunked(65536):
                 f.write(chunk)
                 size += len(chunk)
-        logging.getLogger("upload").info("Upload %s (%d Bytes)", target, size)
+        tmp.replace(target)
+        ulog.info("Upload gespeichert: %s (%d Bytes)", target, size)
         events.add("upload", name=name, size=size)
         return web.Response(text="ok")
 
-    app.add_routes([web.put("/upload/{name:.*}", put), web.post("/upload/{name:.*}", put)])
+    app.add_routes(
+        [
+            web.put("/iot/tmp/000000/{name:.*}", put),
+            web.post("/iot/tmp/000000/{name:.*}", put),
+            web.put("/upload/{name:.*}", put),
+            web.post("/upload/{name:.*}", put),
+        ]
+    )
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.load_cert_chain(cert, key)
-    runner = web.AppRunner(app)
+    runner = web.AppRunner(app, access_log=ulog)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", port, ssl_context=ctx)
     await site.start()
-    logging.getLogger("upload").info("HTTPS-Upload auf :%d", port)
+    ulog.info("HTTPS-Upload auf :%d", port)
 
 
 async def amain() -> int:

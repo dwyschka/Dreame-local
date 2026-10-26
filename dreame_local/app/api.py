@@ -11,6 +11,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from aiohttp import web
 
@@ -93,6 +94,7 @@ class DreameApi:
                 web.post("/dreame-user-iot/iotstatus/devOTCInfo", self.otc_info),
                 web.post("/dreame-user-iot/iotstatus/props", self.props),
                 web.post("/dreame-user-iot/iotstatus/getDeviceData", self.device_data),
+                web.post("/dreame-user-iot/iotstatus/history", self.history),
                 web.post("/dreame-user-iot/iotfile/getDownloadUrl", self.download_url),
                 web.post("/dreame-user-iot/iotfile/getOss1dDownloadUrl", self.download_url),
                 web.post("/file-bridge/user/getDeiviceFile", self.device_file),
@@ -135,6 +137,11 @@ class DreameApi:
     # ------------------------------------------------------------------ routes
     async def file(self, request: web.Request) -> web.Response:
         name = request.match_info["name"].replace("..", "_").lstrip("/")
+        # Die Integration haengt an eine gecachte URL "&current=<ts>" an.
+        # Bei URLs ohne "?" landet das im Pfad – defensiv abschneiden.
+        name = name.split("&current=")[0]
+        if name.startswith("iot/tmp/000000/"):
+            name = name[len("iot/tmp/000000/"):]
         target = self.data_dir / "uploads" / name
         if not target.exists():
             target = self.data_dir / "uploads" / self._resolve(name)
@@ -232,6 +239,11 @@ class DreameApi:
         log.info("getDeviceData siid=%s piid=%s limit=%s", body.get("siid"), body.get("piid"), body.get("limit"))
         return _ok({"list": []})
 
+    async def history(self, request: web.Request) -> web.Response:
+        """Reinigungsverlauf – lokal (noch) nicht vorhanden, aber gueltige Antwort."""
+        log.info("history")
+        return _ok([])
+
     def _resolve(self, name: str) -> str:
         """Existiert die Datei? Sonst die neueste hochgeladene Datei nehmen."""
         root = self.data_dir / "uploads"
@@ -255,7 +267,13 @@ class DreameApi:
         name = str(body.get("filename") or "").lstrip("/")
         resolved = self._resolve(name)
         host = self.public_host or (request.host.split(":")[0] if request.host else "localhost")
-        url = f"https://{host}:{self.port}/files/{resolved}"
+        # Wichtig: eine Query muss vorhanden sein, denn die Integration haengt
+        # beim Wiederverwenden einer gecachten URL "&current=<ts>" an.
+        expires = int(time.time()) + 1800
+        url = (
+            f"https://{host}:{self.port}/files/{quote(resolved, safe='/')}"
+            f"?Expires={expires}&obj={quote(resolved, safe='/')}"
+        )
         log.info("getDownloadUrl %r -> %s", name, url)
         events.add("map_url", requested=name, served=resolved)
         return _ok(url)
@@ -283,10 +301,50 @@ class DreameApi:
         log.info("sendCommand %s %s", method, json.dumps(params)[:300] if params is not None else "")
         try:
             result = await self.dev.send(str(method), params, timeout=15)
+            if method == "get_properties":
+                result = self._complete_properties(result, params)
             return web.json_response({"code": 0, "success": True, "data": {"id": rid, "result": result}})
         except Exception as exc:
             log.warning("sendCommand %s fehlgeschlagen: %s", method, exc)
             return web.json_response({"code": -1, "success": False, "msg": str(exc)})
+
+    def _complete_properties(self, result: Any, requested: Any) -> Any:
+        """Fehlende Properties aus dem Cache ergaenzen.
+
+        Der Roboter beantwortet je nach Auslastung nur einen Teil eines
+        get_properties-Blocks. Die Integration uebernimmt aber genau die
+        zurueckgegebenen Werte – fehlende Keys bleiben dann veraltet.
+        """
+        if not isinstance(result, list) or not isinstance(requested, list):
+            return result
+        have: set[tuple[int, int]] = set()
+        for item in result:
+            if not isinstance(item, dict):
+                continue
+            try:
+                have.add((int(item["siid"]), int(item["piid"])))
+            except (KeyError, TypeError, ValueError):
+                continue
+        changed = False
+        for q in requested:
+            if not isinstance(q, dict):
+                continue
+            try:
+                siid, piid = int(q["siid"]), int(q["piid"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if (siid, piid) in have:
+                continue
+            value = self.dev.props.get(f"{siid}.{piid}")
+            if value is None:
+                continue
+            result.append(
+                {"did": self.dev.did, "siid": siid, "piid": piid, "value": value, "code": 0}
+            )
+            changed = True
+        if changed:
+            log.debug("get_properties: fehlende Werte aus Cache ergaenzt")
+        return result
 
     async def fallback(self, request: web.Request) -> web.Response:
         log.info("unbekannter Aufruf: %s %s", request.method, request.path)

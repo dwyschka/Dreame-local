@@ -9,7 +9,6 @@ from aiohttp import web
 
 import events
 from device import Device, MODE, SUCTION, WATER
-from device import MODE, SUCTION, WATER
 
 log = logging.getLogger("web")
 
@@ -84,9 +83,10 @@ for (const [id,prop] of [['suction','SUCTION_LEVEL'],['water','WATER_VOLUME'],['
 }
 document.getElementById('mapreq').onclick=async()=>{
   const s=await j('api/state');
+  const frame = JSON.stringify({req_type:1,frame_type:'I',force_type:1,time:Date.now()});
   await j('api/command',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({method:'action',params:{did:String(s.did),siid:6,aiid:1,
-      in:[{piid:2,value:'{"frame_type":"I"}'}]}})});
+      in:[{piid:2,value:frame}]}})});
   setTimeout(diag,1000);
 };
 async function diag(){

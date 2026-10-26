@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import secrets
 import time
 from pathlib import Path
 from typing import Any, Awaitable, Callable
@@ -266,24 +267,41 @@ class Device:
             urls = []
             for i in idx:
                 name = f"ali_dreame/{self.uid}/{self.did}/{i}"
-                entry = self._upload_entry(name)
-                urls.append(entry)
+                urls.append(self._upload_entry(name, index=i))
+            if not self.upload_base:
+                log.warning(
+                    "Presigned-URL angefragt, aber lan_ip/upload_port fehlen – "
+                    "der Roboter kann die Karte nicht hochladen"
+                )
+            events.add("presigned_urls", indexes=idx, base=self.upload_base)
             await self._publish(self.result_topic, json.dumps({"id": mid, "result": {"urls": urls}}))
             return
 
         log.debug("Query unbeantwortet: %s %s", method, params)
 
-    def _upload_entry(self, name: str) -> dict[str, Any]:
+    def _upload_entry(self, name: str, index: int | None = None) -> dict[str, Any]:
+        """Antwortobjekt wie in der echten Cloud.
+
+        Wichtig: Der Roboter ordnet die Upload-URLs ueber das Feld ``index``
+        den Kartendateien zu. Fehlt es, werden die URLs verworfen und es
+        kommt nie ein Upload zustande.
+        """
         if not self.upload_base:
-            return {"ok": False}
-        return {
-            "url": f"{self.upload_base}/upload/{name}",
+            return {"ok": False, "obj_name": name}
+        expires = int(time.time()) + 3600
+        entry: dict[str, Any] = {
+            # Gleiche Pfadform wie die echte OSS-URL:
+            # https://dreame-eu.iot.dreame.tech/iot/tmp/000000/ali_dreame/...
+            "url": f"{self.upload_base}/iot/tmp/000000/{name}",
             "method": "PUT",
             "ok": True,
             "obj_name": name,
-            "expires_time": int(time.time()) + 3600,
-            "pwd": "",
+            "expires_time": expires,
+            "pwd": secrets.token_urlsafe(16),
         }
+        if index is not None:
+            entry["index"] = int(index)
+        return entry
 
     def _upload_result(self, suffix: str, mid: int) -> dict[str, Any]:
         now = time.localtime()

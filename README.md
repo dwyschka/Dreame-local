@@ -195,7 +195,8 @@ PUT  /upload/<name>          (für den Roboter, HTTPS auf 8443)
 | `TLS handshake failed` im Log | falsches Zertifikat in `app/certs/` (muss die Dreame-Kette sein) |
 | Keine Entitäten in HA | Mosquitto/MQTT-Integration prüfen, `discovery_prefix` = `homeassistant` |
 | Roboter „offline" in der Dreame-App | **normal** im lokalen Betrieb |
-| Karte fehlt | Uploads landen in `/data/uploads`; Rendering ist noch nicht implementiert |
+| Karte fehlt | Uploads landen in `/data/uploads`; Diagnose: `/api/diagnostics` → `uploads`, `presigned_urls`, `upload`. Der Roboter holt neue Upload-URLs nur etwa stündlich bzw. nach Neustart/Kartenänderung – nach einem Add-on-Update einmal Roboter neu starten oder kurz reinigen lassen |
+| `GET /files/...` 404 | Datei wurde noch nie hochgeladen (kein Upload in `events`) oder der Roboter nutzt eine alte URL aus dem Cache (30 min) |
 | Zurück zur Cloud | DNS-Rewrite löschen, Roboter neu starten |
 
 ---
