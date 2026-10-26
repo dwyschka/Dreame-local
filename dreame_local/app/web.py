@@ -14,6 +14,7 @@ log = logging.getLogger("web")
 
 PAGE = """<!doctype html>
 <html lang="de"><head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-store">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dreame Local</title>
 <style>
@@ -31,8 +32,9 @@ pre{background:#8881;padding:10px;border-radius:10px;overflow:auto;font-size:12p
 input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px solid #8886;background:transparent}
 .off{color:#e55}.on{color:#3c5}
 </style></head><body>
-<h1>Dreame Local Cloud</h1>
-<div class="card"><span class="k">Verbindung</span><div class="v" id="conn">…</div></div>
+<h1>Dreame Local Cloud <small id="ver" style="font-size:.7rem;opacity:.6"></small></h1>
+<div class="card"><span class="k">Verbindung</span><div class="v" id="conn">…</div>
+<div class="k" id="clients" style="margin-top:6px;text-transform:none;letter-spacing:0"></div></div>
 <div class="grid" id="cards" style="margin-top:8px"></div>
 <div class="row">
   <button data-cmd="start">Start</button>
@@ -56,8 +58,10 @@ async function j(p, opt){ const r = await fetch(p, opt); return r.json(); }
 function card(k,v){ return `<div class="card"><div class="k">${k}</div><div class="v">${v??'–'}</div></div>`; }
 async function tick(){
   try {
-    const s = await j('api/state');
+    const s = await j('api/state?t=' + Date.now());
+    document.getElementById('ver').textContent = s.version ? 'v' + s.version : '';
     document.getElementById('conn').innerHTML = s.online ? '<span class="on">online</span>' : '<span class="off">offline</span>';
+    document.getElementById('clients').textContent = (s.clients || []).map(c => c.client_id).join(', ') || 'keine MQTT-Clients';
     document.getElementById('cards').innerHTML = [
       card('Akku', s.battery!=null ? s.battery+' %' : null),
       card('Status', s.state), card('Fehler', s.error||'–'),
@@ -121,13 +125,31 @@ async def ingress_middleware(request: web.Request, handler):
     return await handler(request)
 
 
+@web.middleware
+async def no_cache(request: web.Request, handler):
+    response = await handler(request)
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
 class Web:
-    def __init__(self, device: Device, port: int = 8099, data_dir: Path | None = None, clients_fn=None) -> None:
+    def __init__(
+        self,
+        device: Device,
+        port: int = 8099,
+        data_dir: Path | None = None,
+        clients_fn=None,
+        version: str = "",
+    ) -> None:
         self.dev = device
         self.clients_fn = clients_fn
+        self.version = version
         self.port = port
         self.data_dir = data_dir or Path("/data")
-        self.app = web.Application(client_max_size=512 * 1024 * 1024, middlewares=[ingress_middleware])
+        self.app = web.Application(
+            client_max_size=512 * 1024 * 1024,
+            middlewares=[ingress_middleware, no_cache],
+        )
         self.app.add_routes(
             [
                 web.get("/", self.index),
@@ -151,13 +173,15 @@ class Web:
 
     async def state(self, request: web.Request) -> web.Response:
         snap = self.dev.snapshot()
+        snap["version"] = self.version
         if self.clients_fn:
             # Online-Status direkt aus den aktiven MQTT-Sessions ableiten,
             # damit eine verspaetete alte Session ihn nicht dauerhaft kippt.
+            clients = self.clients_fn()
             snap["online"] = any(
-                str(c.get("client_id", "")).startswith("device_")
-                for c in self.clients_fn()
+                str(c.get("client_id", "")).startswith("device_") for c in clients
             )
+            snap["clients"] = clients
         return web.json_response(snap)
 
     async def uploads(self, request: web.Request) -> web.Response:

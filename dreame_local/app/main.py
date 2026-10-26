@@ -25,6 +25,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
+VERSION = "0.3.8"
 
 
 def load_options() -> dict:
@@ -234,7 +235,7 @@ async def amain() -> int:
         device.listeners.append(_on_state)
         ha.start()
 
-    web_ui = Web(device, web_port, data_dir, clients_fn=broker.clients)
+    web_ui = Web(device, web_port, data_dir, clients_fn=broker.clients, version=VERSION)
     api = DreameApi(
         device,
         api_port,
@@ -270,6 +271,7 @@ async def amain() -> int:
             "lan_ip ist leer – der Roboter bekommt keine Upload-URLs, "
             "die Karte kann nicht ankommen"
         )
+    log.info("Dreame Local Cloud v%s", VERSION)
     log.info(
         "Bereit: Broker :%d, API :%d, Web :%d, Upload :%d, Discovery %s, Auto-DID=%s",
         broker_port,
