@@ -259,7 +259,11 @@ class Device:
             events.add("sync_request", method=method, params=params)
         if method == "_sync.gen_presigned_url" and isinstance(params, dict):
             suffix = params.get("suffix") or "upload.bin"
-            await self._publish(self.result_topic, json.dumps({"id": mid, "result": self._upload_result(suffix, mid)}))
+            entry = self._upload_entry(
+                self._pack_name(suffix), prefix="device-log/pack/000000"
+            )
+            log.info("Upload-URL (Log): %s", entry.get("url"))
+            await self._publish(self.result_topic, json.dumps({"id": mid, "result": {suffix: entry}}))
             return
 
         if method == "_sync.gen_tmp_presigned_url" and isinstance(params, dict):
@@ -315,13 +319,12 @@ class Device:
             entry["index"] = int(index)
         return entry
 
-    def _upload_result(self, suffix: str, mid: int) -> dict[str, Any]:
+    def _pack_name(self, suffix: str) -> str:
         now = time.localtime()
-        name = (
+        return (
             f"ali_dreame/{now.tm_year}/{now.tm_mon:02d}/{now.tm_mday:02d}/{self.uid}/"
             f"{self.did}_{now.tm_hour:02d}{now.tm_min:02d}{now.tm_sec:02d}.{suffix}"
         )
-        return {suffix: self._upload_entry(name, prefix="device-log/pack/000000")}
 
     # ----------------------------------------------------------------- commands
     async def send(self, method: str, params: Any, timeout: float = 8.0) -> Any:

@@ -13,6 +13,7 @@ import ssl
 import sys
 from pathlib import Path
 
+import aiohttp
 from aiohttp import web
 
 from api import DreameApi
@@ -56,7 +57,9 @@ def load_options() -> dict:
     return opts
 
 
-async def upload_server(device: Device, port: int, cert: str, key: str, data_dir: Path) -> None:
+async def upload_server(
+    device: Device, port: int, cert: str, key: str, data_dir: Path, lan_ip: str = ""
+) -> None:
     """HTTPS-Endpunkt, an den der Roboter Karten/Logs hochlaedt."""
     ulog = logging.getLogger("upload")
     root = data_dir / "uploads"
@@ -84,6 +87,8 @@ async def upload_server(device: Device, port: int, cert: str, key: str, data_dir
 
     async def put(request: web.Request) -> web.Response:
         name = request.match_info["name"].replace("..", "_").lstrip("/")
+        if name.strip("/") == "__selftest":
+            return web.Response(text="ok")
         target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)
         size = 0
@@ -114,6 +119,39 @@ async def upload_server(device: Device, port: int, cert: str, key: str, data_dir
     site = web.TCPSite(runner, "0.0.0.0", port, ssl_context=ctx)
     await site.start()
     ulog.info("HTTPS-Upload auf :%d", port)
+
+    async def _put_once(url: str) -> tuple[bool, str]:
+        try:
+            timeout = aiohttp.ClientTimeout(total=8)
+            connector = aiohttp.TCPConnector(ssl=False)
+            async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+                async with session.put(url, data=b"selftest") as resp:
+                    body = (await resp.text())[:40]
+                    return resp.status == 200, f"HTTP {resp.status} {body}"
+        except Exception as exc:
+            return False, str(exc)
+
+    async def _selftest() -> None:
+        await asyncio.sleep(2)
+        loopback = f"https://127.0.0.1:{port}/iot/tmp/000000/__selftest"
+        ok, detail = await _put_once(loopback)
+        ulog.info("Upload-Selbsttest (intern): %s (%s)", "ok" if ok else "FEHLER", detail)
+        events.add("upload_selftest", target="intern", ok=ok, detail=detail)
+        if lan_ip:
+            public = f"https://{lan_ip}:{port}/iot/tmp/000000/__selftest"
+            ok2, detail2 = await _put_once(public)
+            ulog.info("Upload-Selbsttest (LAN-IP): %s (%s)", "ok" if ok2 else "FEHLER", detail2)
+            events.add("upload_selftest", target="lan_ip", ok=ok2, detail=detail2)
+            if not ok2:
+                ulog.warning(
+                    "Upload-Port %d ist über %s:%d nicht erreichbar – "
+                    "Portmapping/Firewall prüfen, sonst kann der Roboter nichts hochladen",
+                    port,
+                    lan_ip,
+                    port,
+                )
+
+    asyncio.create_task(_selftest(), name="upload-selftest")
 
 
 async def amain() -> int:
@@ -203,7 +241,7 @@ async def amain() -> int:
 
     async def safe_upload() -> None:
         try:
-            await upload_server(device, upload_port, cert, key, data_dir)
+            await upload_server(device, upload_port, cert, key, data_dir, lan_ip=lan_ip)
         except OSError as exc:
             log.warning("HTTPS-Upload auf :%d nicht verfügbar (%s) – Karten-Uploads bleiben aus", upload_port, exc)
 
