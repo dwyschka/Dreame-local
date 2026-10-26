@@ -273,13 +273,17 @@ class Device:
                     "Presigned-URL angefragt, aber lan_ip/upload_port fehlen – "
                     "der Roboter kann die Karte nicht hochladen"
                 )
+            elif urls:
+                log.info("Upload-URLs erzeugt: %d, z.B. %s", len(urls), urls[0].get("url"))
             events.add("presigned_urls", indexes=idx, base=self.upload_base)
             await self._publish(self.result_topic, json.dumps({"id": mid, "result": {"urls": urls}}))
             return
 
         log.debug("Query unbeantwortet: %s %s", method, params)
 
-    def _upload_entry(self, name: str, index: int | None = None) -> dict[str, Any]:
+    def _upload_entry(
+        self, name: str, index: int | None = None, prefix: str = "iot/tmp/000000"
+    ) -> dict[str, Any]:
         """Antwortobjekt wie in der echten Cloud.
 
         Wichtig: Der Roboter ordnet die Upload-URLs ueber das Feld ``index``
@@ -299,8 +303,8 @@ class Device:
         )
         entry: dict[str, Any] = {
             # Gleiche Pfadform wie die echte OSS-URL:
-            # https://dreame-eu.iot.dreame.tech/iot/tmp/000000/ali_dreame/...
-            "url": f"{self.upload_base}/iot/tmp/000000/{name}?{query}",
+            # https://dreame-eu.iot.dreame.tech/<prefix>/ali_dreame/...
+            "url": f"{self.upload_base}/{prefix}/{name}?{query}",
             "method": "PUT",
             "ok": True,
             "obj_name": name,
@@ -317,7 +321,7 @@ class Device:
             f"ali_dreame/{now.tm_year}/{now.tm_mon:02d}/{now.tm_mday:02d}/{self.uid}/"
             f"{self.did}_{now.tm_hour:02d}{now.tm_min:02d}{now.tm_sec:02d}.{suffix}"
         )
-        return {suffix: self._upload_entry(name)}
+        return {suffix: self._upload_entry(name, prefix="device-log/pack/000000")}
 
     # ----------------------------------------------------------------- commands
     async def send(self, method: str, params: Any, timeout: float = 8.0) -> Any:

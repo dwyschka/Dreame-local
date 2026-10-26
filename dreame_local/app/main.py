@@ -101,6 +101,8 @@ async def upload_server(device: Device, port: int, cert: str, key: str, data_dir
         [
             web.put("/iot/tmp/000000/{name:.*}", put),
             web.post("/iot/tmp/000000/{name:.*}", put),
+            web.put("/device-log/pack/000000/{name:.*}", put),
+            web.post("/device-log/pack/000000/{name:.*}", put),
             web.put("/upload/{name:.*}", put),
             web.post("/upload/{name:.*}", put),
         ]
