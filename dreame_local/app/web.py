@@ -105,7 +105,7 @@ async function diag(){
     (d.events||[]).slice(0,30).forEach(e=>{
       const {ts,kind,...rest}=e; lines.push(`  ${ts} ${kind} ${JSON.stringify(rest).slice(0,220)}`);
     });
-    document.getElementById('diag').textContent=lines.join('\n');
+    document.getElementById('diag').textContent=lines.join('\\n');
   }catch(e){ document.getElementById('diag').textContent='Diagnose nicht verfügbar'; }
 }
 document.getElementById('refresh').onclick=()=>{tick();diag();};
