@@ -150,7 +150,15 @@ class Web:
         return web.Response(text=PAGE, content_type="text/html")
 
     async def state(self, request: web.Request) -> web.Response:
-        return web.json_response(self.dev.snapshot())
+        snap = self.dev.snapshot()
+        if self.clients_fn:
+            # Online-Status direkt aus den aktiven MQTT-Sessions ableiten,
+            # damit eine verspaetete alte Session ihn nicht dauerhaft kippt.
+            snap["online"] = any(
+                str(c.get("client_id", "")).startswith("device_")
+                for c in self.clients_fn()
+            )
+        return web.json_response(snap)
 
     async def uploads(self, request: web.Request) -> web.Response:
         root = self.data_dir / "uploads"

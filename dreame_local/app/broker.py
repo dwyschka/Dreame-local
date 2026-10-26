@@ -161,12 +161,16 @@ class MqttBroker:
         except Exception:  # pragma: no cover
             log.exception("Broker-Fehler bei %s", peer)
         finally:
-            if sess.client_id and self.sessions.get(sess.client_id) is sess:
+            # Nur die *aktuelle* Session darf den Online-Status loeschen.
+            # Bei einem schnellen Reconnect ist die alte Session noch nicht
+            # beendet; ihr Disconnect darf die neue nicht als offline markieren.
+            current = bool(sess.client_id) and self.sessions.get(sess.client_id) is sess
+            if current:
                 self.sessions.pop(sess.client_id, None)
             writer.close()
-            log.info("Client getrennt: %s (%s)", sess.client_id, peer)
+            log.info("Client getrennt: %s (%s)%s", sess.client_id, peer, "" if current else " [alte Session]")
             events.add("mqtt_disconnect", client_id=sess.client_id, peer=peer)
-            if self.on_disconnect:
+            if current and self.on_disconnect:
                 await self.on_disconnect(sess.client_id, sess.username or None)
 
     @staticmethod
