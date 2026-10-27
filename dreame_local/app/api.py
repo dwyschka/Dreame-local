@@ -416,6 +416,30 @@ class DreameApi:
             result = await self.dev.send(str(method), params, timeout=15)
             if method == "get_properties":
                 result = self._complete_properties(result, params)
+            # REQUEST_MAP (siid 6, aiid 1): Die echte Cloud liefert hier den
+            # vollstaendigen I-Frame im out-Array (piid 1) zurueck. Der
+            # Roboter antwortet im Docked-Zustand leer; wir ergaenzen die
+            # gespeicherte Karte, damit die Integration _map_data aufbaut.
+            if (
+                method == "action"
+                and isinstance(params, dict)
+                and str(params.get("siid")) == "6"
+                and str(params.get("aiid")) == "1"
+                and isinstance(result, dict)
+            ):
+                blob = self._live_map_blob()
+                if blob:
+                    out = result.get("out")
+                    if not isinstance(out, list):
+                        out = []
+                    found = False
+                    for item in out:
+                        if isinstance(item, dict) and item.get("piid") == 1:
+                            item["value"] = blob
+                            found = True
+                    if not found:
+                        out.append({"piid": 1, "value": blob})
+                    result["out"] = out
             return web.json_response({"code": 0, "success": True, "data": {"id": rid, "result": result}})
         except Exception as exc:
             log.warning("sendCommand %s fehlgeschlagen: %s", method, exc)
