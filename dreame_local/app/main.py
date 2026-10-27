@@ -25,7 +25,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.3.9"
+VERSION = "0.3.10"
 
 
 def load_options() -> dict:

@@ -1,7 +1,10 @@
 """Web-UI / REST-API (HA-Ingress oder direkt auf Port 8099)."""
 from __future__ import annotations
 
+import base64
+import json
 import logging
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +52,8 @@ input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px soli
   <select id="mode"><option value="">Modus…</option><option>sweeping</option><option>mopping</option><option>sweeping_and_mopping</option></select>
 </div>
 <div class="row"><button id="refresh">Aktualisieren</button>
-<button id="mapreq">Karte anfordern</button></div>
+<button id="mapreq">Karte anfordern</button>
+<button id="mapcheck">Karte prüfen</button></div>
 <pre id="log"></pre>
 <h3 style="font-size:1rem">Diagnose</h3>
 <pre id="diag">…</pre>
@@ -108,6 +112,12 @@ async function diag(){
     document.getElementById('diag').textContent=lines.join('\\n');
   }catch(e){ document.getElementById('diag').textContent='Diagnose nicht verfügbar'; }
 }
+document.getElementById('mapcheck').onclick=async()=>{
+  try {
+    const r=await j('api/mapcheck');
+    document.getElementById('diag').textContent=JSON.stringify(r,null,2);
+  }catch(e){ document.getElementById('diag').textContent='Kartenprüfung fehlgeschlagen'; }
+};
 document.getElementById('refresh').onclick=()=>{tick();diag();};
 diag(); setInterval(diag, 5000);
 tick(); setInterval(tick, 3000);
@@ -156,6 +166,7 @@ class Web:
                 web.get("/api/state", self.state),
                 web.get("/api/uploads", self.uploads),
                 web.get("/api/diagnostics", self.diagnostics),
+                web.get("/api/mapcheck", self.mapcheck),
                 web.post("/api/command", self.command),
                 web.put("/upload/{name:.*}", self.upload),
             ]
@@ -208,6 +219,76 @@ class Web:
         uploads.sort(key=lambda x: x["mtime"], reverse=True)
         clients = self.clients_fn() if self.clients_fn else []
         return web.json_response({"clients": clients, "events": events.all(), "uploads": uploads})
+
+    async def mapcheck(self, request: web.Request) -> web.Response:
+        """Prueft den zuletzt hochgeladenen Kartenblob (Format/Header)."""
+        root = self.data_dir / "uploads"
+        name = request.query.get("name") or f"ali_dreame/{self.dev.uid}/{self.dev.did}/9"
+        target = root / name
+        if not target.is_file():
+            candidates = (
+                [p for p in root.rglob("*") if p.is_file() and not p.name.startswith("__")]
+                if root.exists()
+                else []
+            )
+            if not candidates:
+                return web.json_response({"ok": False, "error": "keine Uploads vorhanden"})
+            target = max(candidates, key=lambda p: p.stat().st_mtime)
+            name = str(target.relative_to(root))
+
+        result: dict[str, Any] = {
+            "ok": False,
+            "name": name,
+            "size": target.stat().st_size,
+        }
+        try:
+            data = target.read_bytes()
+            text = data.decode("utf-8", "replace").strip()
+            result["text_len"] = len(text)
+            result["head"] = text[:60]
+            key = None
+            if "," in text:
+                text, key = text.split(",", 1)
+                result["embedded_key"] = True
+            raw_b64 = text.replace("_", "/").replace("-", "+")
+            while len(raw_b64) % 4:
+                raw_b64 += "="
+            raw = base64.b64decode(raw_b64, validate=False)
+            result["decoded_len"] = len(raw)
+            result["magic"] = raw[:4].hex()
+            try:
+                plain = zlib.decompress(raw)
+                result["zlib"] = True
+            except Exception:
+                plain = raw
+                result["zlib"] = False
+            result["plain_len"] = len(plain)
+            if result["zlib"] and len(plain) >= 27:
+                result["map_id"] = int.from_bytes(plain[0:2], "little")
+                result["frame_id"] = int.from_bytes(plain[2:4], "little")
+                result["frame_type"] = plain[4]
+                width = int.from_bytes(plain[19:21], "little")
+                height = int.from_bytes(plain[21:23], "little")
+                result["width"] = width
+                result["height"] = height
+                image_size = 27 + width * height
+                result["image_size"] = image_size
+                if len(plain) >= image_size:
+                    try:
+                        meta = json.loads(plain[image_size:].decode("utf-8"))
+                        result["json_keys"] = sorted(meta.keys())
+                        result["json_timestamp_ms"] = meta.get("timestamp_ms")
+                    except Exception as exc:
+                        result["json_error"] = str(exc)
+                result["ok"] = True
+            elif not result["zlib"]:
+                result["error"] = (
+                    "kein zlib-Header – Blob ist vermutlich verschlüsselt "
+                    "oder keine Karte (Magic %s)" % result["magic"]
+                )
+        except Exception as exc:
+            result["error"] = str(exc)
+        return web.json_response(result)
 
     async def command(self, request: web.Request) -> web.Response:
         body: dict[str, Any] = await request.json()
