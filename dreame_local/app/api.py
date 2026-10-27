@@ -6,9 +6,12 @@ unveraendert weiter – inklusive Karten/Kartenkarten.
 """
 from __future__ import annotations
 
+import base64
 import json
 import logging
+import os
 import time
+import zlib
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -206,6 +209,58 @@ class DreameApi:
             }
         )
 
+    @staticmethod
+    def _as_current_map(blob: str) -> str:
+        """Markiert einen gespeicherten I-Frame als wiederhergestellte Karte.
+
+        Die Integration unterscheidet ``saved_map`` und ``_map_data`` anhand
+        der JSON-Flags im I-Frame. Ein gespeicherter Frame wird sonst nur
+        unter ``saved`` abgelegt und die Kamera bleibt unavailable. Mit
+        ``rpur=1`` (restored) wird derselbe Frame als aktuelle Karte geladen.
+        """
+        try:
+            text = blob.replace("_", "/").replace("-", "+")
+            raw = zlib.decompress(base64.b64decode(text + "=" * (-len(text) % 4)))
+            width = int.from_bytes(raw[19:21], "little")
+            height = int.from_bytes(raw[21:23], "little")
+            image_end = 27 + width * height
+            info = json.loads(raw[image_end:].decode("utf8"))
+            if info.get("rpur") == 1:
+                return blob
+            info["rpur"] = 1
+            raw = raw[:image_end] + json.dumps(info, separators=(",", ":")).encode("utf8")
+            return base64.b64encode(zlib.compress(raw, 9)).decode("ascii")
+        except Exception:
+            return blob
+
+    def _live_map_blob(self) -> str:
+        """Vollstaendigen I-Frame aus der gespeicherten Map-List liefern.
+
+        Der Roboter stellt im Docked-Zustand keine Live-Karte bereit. Die
+        Integration braucht aber einen I-Frame, damit Kamera und Karten-Card
+        verfuegbar werden. Wir nehmen deshalb die gespeicherte Karte
+        (Map-List 9 bzw. 9.frame), nicht den kleinen P-Frame, und markieren
+        sie als wiederhergestellte/aktuelle Karte.
+        """
+        root = self.data_dir / "uploads" / f"ali_dreame/{self.dev.uid}/{self.dev.did}"
+        frame = root / "9.frame"
+        try:
+            if frame.is_file() and frame.stat().st_size > 1000:
+                return self._as_current_map(frame.read_text().strip())
+        except OSError:
+            pass
+        list_file = root / "9"
+        try:
+            if list_file.is_file():
+                data = json.loads(list_file.read_text())
+                for entry in data.get("mapstr") or []:
+                    blob = entry.get("map")
+                    if isinstance(blob, str) and len(blob) > 1000:
+                        return self._as_current_map(blob)
+        except Exception:
+            pass
+        return ""
+
     async def props(self, request: web.Request) -> web.Response:
         body = await request.json()
         keys = body.get("keys")
@@ -220,6 +275,21 @@ class DreameApi:
             if len(parts) == 2:
                 siid, piid = parts
                 value = self.dev.props.get(f"{siid}.{piid}")
+                # Live-Kartenframes: 6.1 liefert den vollstaendigen I-Frame
+                # aus der gespeicherten Map-List, 6.2 (FRAME_INFO) bleibt
+                # leer. Ein einzelner P-Frame wuerde sonst zu
+                # "Map update Failed" (_current_frame_id ist None) fuehren.
+                if siid == "6" and piid in ("1", "2"):
+                    blob = self._live_map_blob() if piid == "1" else ""
+                    if blob:
+                        item = {"siid": int(siid), "piid": int(piid), "value": blob,
+                                "code": 0, "did": self.dev.did,
+                                "updateDate": int(time.time() * 1000)}
+                    else:
+                        item = {"siid": int(siid), "piid": int(piid), "value": None,
+                                "code": -1, "did": self.dev.did}
+                    out.append(item)
+                    continue
                 item = {"siid": int(siid), "piid": int(piid), "value": value, "code": 0,
                         "did": self.dev.did}
                 try:
@@ -234,9 +304,30 @@ class DreameApi:
         return _ok(out)
 
     async def device_data(self, request: web.Request) -> web.Response:
-        """Historische Property-Daten (Map-Frames). Lokal gibt es keinen Verlauf."""
+        """Historische Property-Daten (Map-Frames).
+
+        Fuer MAP_DATA (6.1) liefern wir den vollstaendigen gespeicherten
+        I-Frame. Die Integration erwartet ``value`` als JSON-Liste und
+        decodiert daraus die Karte; damit wird die Kamera auch im
+        Docked-Zustand verfuegbar.
+        """
         body = await request.json()
         log.info("getDeviceData siid=%s piid=%s limit=%s", body.get("siid"), body.get("piid"), body.get("limit"))
+        if str(body.get("siid")) == "6" and str(body.get("piid")) == "1":
+            blob = self._live_map_blob()
+            if blob:
+                return _ok(
+                    {
+                        "list": [
+                            {
+                                "siid": 6,
+                                "piid": 1,
+                                "value": json.dumps([blob], separators=(",", ":")),
+                                "time": int(time.time()),
+                            }
+                        ]
+                    }
+                )
         return _ok({"list": []})
 
     async def history(self, request: web.Request) -> web.Response:
@@ -279,7 +370,16 @@ class DreameApi:
         # Die Integration laedt die Karte ueber denselben Host, ueber den sie
         # auch die API aufruft (z. B. eu.iot.dreame.tech:13267). Ein Wechsel
         # auf die LAN-IP bricht bei ihrem eigenen TLS-Client.
-        host = (request.host.split(":")[0] if request.host else "") or self.public_host or "localhost"
+        # Optionaler Host fuer die Karten-Download-URLs. Nuetzlich, wenn die
+        # Integration die Datei ueber eine andere Instanz (z. B. HA) laden
+        # soll; der lokale File-Handler hatte bei grossen Dateien nur 253
+        # Bytes geliefert.
+        host = (
+            os.environ.get("DOWNLOAD_HOST", "").strip()
+            or (request.host.split(":")[0] if request.host else "")
+            or self.public_host
+            or "localhost"
+        )
         # Wichtig: eine Query muss vorhanden sein, denn die Integration haengt
         # beim Wiederverwenden einer gecachten URL "&current=<ts>" an.
         expires = int(time.time()) + 1800
