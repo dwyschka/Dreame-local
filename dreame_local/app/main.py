@@ -6,11 +6,13 @@ die Home-Assistant-MQTT-Bruecke und die Web-UI.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
 import os
 import ssl
 import sys
+import zlib
 from pathlib import Path
 
 import aiohttp
@@ -25,7 +27,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.3.16"
+VERSION = "0.3.17"
 
 
 def load_options() -> dict:
@@ -206,6 +208,59 @@ async def amain() -> int:
 
     device = Device(did, uid, model, region, publish=None, upload_base=upload_base, data_dir=data_dir)  # type: ignore[arg-type]
 
+    # Map-ID der gespeicherten Karte (24) ermitteln. Die Live-P-Frames des
+    # Roboters tragen eine temporaere Map-ID (z.B. 5); die Integration
+    # verwirft sie dann. Beim Weiterleiten an die Integration wird nur die
+    # Map-ID auf die gespeicherte Karte umgeschrieben, Frame-ID und Position
+    # bleiben die des Live-Frames.
+    def _saved_map_id() -> int:
+        root = data_dir / "uploads" / f"ali_dreame/{uid}/{did}"
+        try:
+            frame = (root / "9.frame").read_text().strip()
+            text = frame.replace("_", "/").replace("-", "+")
+            raw = zlib.decompress(base64.b64decode(text + "=" * (-len(text) % 4)))
+            return int.from_bytes(raw[0:2], "little")
+        except Exception:
+            pass
+        try:
+            info = json.loads((root / "9").read_text())
+            for entry in info.get("mapstr") or []:
+                blob = entry.get("map") or ""
+                text = blob.replace("_", "/").replace("-", "+")
+                raw = zlib.decompress(base64.b64decode(text + "=" * (-len(text) % 4)))
+                return int.from_bytes(raw[0:2], "little")
+        except Exception:
+            pass
+        return 0
+
+    saved_map_id = _saved_map_id()
+
+    def map_transform(topic: str, payload: bytes) -> bytes:
+        if "/status/" not in topic or not saved_map_id:
+            return payload
+        try:
+            msg = json.loads(payload)
+            data = msg.get("data") or {}
+            if data.get("method") != "properties_changed":
+                return payload
+            changed = False
+            for param in data.get("params") or []:
+                if param.get("siid") != 6 or param.get("piid") != 1:
+                    continue
+                value = param.get("value")
+                if not isinstance(value, str) or not value:
+                    continue
+                text = value.replace("_", "/").replace("-", "+")
+                raw = bytearray(zlib.decompress(base64.b64decode(text + "=" * (-len(text) % 4))))
+                if len(raw) < 27:
+                    continue
+                raw[0:2] = saved_map_id.to_bytes(2, "little")
+                param["value"] = base64.b64encode(zlib.compress(bytes(raw), 9)).decode("ascii")
+                changed = True
+            return json.dumps(msg, separators=(",", ":")).encode() if changed else payload
+        except Exception:
+            return payload
+
     broker: MqttBroker
 
     async def publish(topic: str, payload: str) -> int:
@@ -240,6 +295,7 @@ async def amain() -> int:
         on_connect=on_connect,
         on_disconnect=on_disconnect,
         device_ip=str(opts.get("device_ip") or ""),
+        transform=map_transform,
     )
 
     loop = asyncio.get_running_loop()

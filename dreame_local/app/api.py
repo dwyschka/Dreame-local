@@ -209,26 +209,46 @@ class DreameApi:
             }
         )
 
-    @staticmethod
-    def _as_current_map(blob: str) -> str:
-        """Markiert einen gespeicherten I-Frame als wiederhergestellte Karte.
+    def _as_current_map(self, blob: str) -> str:
+        """Markiert einen gespeicherten I-Frame als aktuelle Live-Karte.
 
         Die Integration unterscheidet ``saved_map`` und ``_map_data`` anhand
-        der JSON-Flags im I-Frame. Ein gespeicherter Frame wird sonst nur
-        unter ``saved`` abgelegt und die Kamera bleibt unavailable. Mit
-        ``rpur=1`` (restored) wird derselbe Frame als aktuelle Karte geladen.
+        der JSON-Flags im I-Frame. Zusaetzlich muessen Map-ID, Frame-ID und
+        Roboterposition zum aktuellen P-Frame des Roboters passen, sonst
+        werden dessen Positions-Updates verworfen.
         """
         try:
             text = blob.replace("_", "/").replace("-", "+")
-            raw = zlib.decompress(base64.b64decode(text + "=" * (-len(text) % 4)))
+            raw = bytearray(zlib.decompress(base64.b64decode(text + "=" * (-len(text) % 4))))
             width = int.from_bytes(raw[19:21], "little")
             height = int.from_bytes(raw[21:23], "little")
             image_end = 27 + width * height
-            info = json.loads(raw[image_end:].decode("utf8"))
-            if info.get("rpur") == 1:
-                return blob
+            info = json.loads(bytes(raw[image_end:]).decode("utf8"))
+
+            live_blob = self.dev.props.get("6.1")
+            if isinstance(live_blob, str) and live_blob:
+                lt = live_blob.replace("_", "/").replace("-", "+")
+                lraw = zlib.decompress(base64.b64decode(lt + "=" * (-len(lt) % 4)))
+                if len(lraw) >= 27:
+                    # Map-ID der gespeicherten Karte (24) beibehalten, aber
+                    # die Frame-ID des aktuellen Live-Frames setzen. Der
+                    # Broker schreibt die folgenden P-Frames ebenfalls auf
+                    # Map 24 um, sodass frame_id+1 jeweils passt.
+                    raw[2:4] = lraw[2:4]            # frame_id = live frame
+                    raw[5:7] = lraw[5:7]            # robot x
+                    raw[7:9] = lraw[7:9]            # robot y
+                    raw[9] = lraw[9]               # robot angle
+                    lw = int.from_bytes(lraw[19:21], "little")
+                    lh = int.from_bytes(lraw[21:23], "little")
+                    try:
+                        linfo = json.loads(bytes(lraw[27 + lw * lh:]).decode("utf8"))
+                        if linfo.get("timestamp_ms"):
+                            info["timestamp_ms"] = linfo["timestamp_ms"]
+                    except Exception:
+                        pass
+
             info["rpur"] = 1
-            raw = raw[:image_end] + json.dumps(info, separators=(",", ":")).encode("utf8")
+            raw = bytes(raw[:image_end]) + json.dumps(info, separators=(",", ":")).encode("utf8")
             return base64.b64encode(zlib.compress(raw, 9)).decode("ascii")
         except Exception:
             return blob

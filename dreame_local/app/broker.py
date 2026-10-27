@@ -76,12 +76,14 @@ class MqttBroker:
         on_connect: EventCb | None = None,
         on_disconnect: EventCb | None = None,
         device_ip: str = "",
+        transform: Callable[[str, bytes], bytes] | None = None,
     ) -> None:
         self.port = port
         self.on_publish = on_publish
         self.on_connect = on_connect
         self.on_disconnect = on_disconnect
         self.device_ip = device_ip.strip()
+        self.transform = transform
         self.sessions: dict[str, Session] = {}
         self.ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.ctx.load_cert_chain(cert, key)
@@ -187,7 +189,13 @@ class MqttBroker:
                     # Nachricht an die uebrigen Abonnenten weiterleiten.
                     # Ohne das erreichen Status-/Karten-Updates des Roboters
                     # nie die Tasshack-Integration (die lauscht auf /status/).
-                    await self.publish(topic, payload, qos=1, exclude=sess)
+                    forwarded = payload
+                    if self.transform is not None:
+                        try:
+                            forwarded = self.transform(topic, payload)
+                        except Exception:
+                            forwarded = payload
+                    await self.publish(topic, forwarded, qos=1, exclude=sess)
                 elif typ == 6:  # PUBREL
                     writer.write(_packet(7, 0, body[:2]))
                     await writer.drain()
