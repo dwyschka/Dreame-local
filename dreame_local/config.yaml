@@ -1,5 +1,5 @@
 name: Dreame Local Cloud
-version: "0.3.12"
+version: "0.3.13"
 slug: dreame_local_cloud
 description: Ersetzt die Dreame-Cloud lokal (MQTT/TLS) und bindet den Roboter per MQTT-Discovery in Home Assistant ein.
 url: https://github.com/dwyschka/Dreame-local
@@ -34,6 +34,7 @@ options:
   discovery_prefix: homeassistant
   lan_ip: ""
   upload_host: ""
+  device_ip: ""
   mac: ""
   broker_port: 19973
   web_port: 8099
@@ -53,6 +54,7 @@ schema:
   discovery_prefix: str
   lan_ip: str
   upload_host: str
+  device_ip: str
   mac: str
   broker_port: port
   web_port: port

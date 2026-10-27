@@ -75,11 +75,13 @@ class MqttBroker:
         on_publish: PublishCb,
         on_connect: EventCb | None = None,
         on_disconnect: EventCb | None = None,
+        device_ip: str = "",
     ) -> None:
         self.port = port
         self.on_publish = on_publish
         self.on_connect = on_connect
         self.on_disconnect = on_disconnect
+        self.device_ip = device_ip.strip()
         self.sessions: dict[str, Session] = {}
         self.ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self.ctx.load_cert_chain(cert, key)
@@ -98,7 +100,9 @@ class MqttBroker:
             await server.serve_forever()
 
     async def _handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        peer = str(writer.get_extra_info("peername"))
+        peer_info = writer.get_extra_info("peername")
+        peer = str(peer_info)
+        peer_host = str(peer_info[0]) if isinstance(peer_info, tuple) and peer_info else ""
         sess = Session(writer=writer, peer=peer)
         log.info("Client verbunden: %s", peer)
         try:
@@ -106,6 +110,45 @@ class MqttBroker:
                 typ, flags, body = await self._read(reader)
                 if typ == 1:
                     self._connect(sess, body)
+                    # Nur der echte Roboter darf sich als device_<did> melden.
+                    # Ein Testclient mit denselben Zugangsdaten wuerde sonst
+                    # die Session besetzen und echte Uploads verhindern.
+                    if (
+                        sess.client_id.startswith("device_")
+                        and self.device_ip
+                        and peer_host != self.device_ip
+                    ):
+                        log.warning(
+                            "CONNECT %s von %s abgelehnt (erwartet %s)",
+                            sess.client_id,
+                            peer_host,
+                            self.device_ip,
+                        )
+                        events.add(
+                            "mqtt_reject",
+                            client_id=sess.client_id,
+                            peer=peer,
+                            expected=self.device_ip,
+                        )
+                        writer.write(_packet(2, 0, b"\x00\x05"))
+                        await writer.drain()
+                        break
+                    old = self.sessions.get(sess.client_id)
+                    if old is not None and old is not sess:
+                        log.warning(
+                            "CONNECT %s von %s: ersetze bestehende Session von %s",
+                            sess.client_id,
+                            peer,
+                            old.peer,
+                        )
+                        events.add(
+                            "mqtt_takeover",
+                            client_id=sess.client_id,
+                            peer=peer,
+                            replaced=old.peer,
+                        )
+                        if old.writer is not None:
+                            old.writer.close()
                     self.sessions[sess.client_id] = sess
                     writer.write(_packet(2, 0, b"\x00\x00"))
                     await writer.drain()

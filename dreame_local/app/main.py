@@ -25,7 +25,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.3.12"
+VERSION = "0.3.13"
 
 
 def load_options() -> dict:
@@ -45,6 +45,7 @@ def load_options() -> dict:
         "device_name",
         "lan_ip",
         "upload_host",
+        "device_ip",
         "broker_port",
         "web_port",
         "upload_port",
@@ -226,6 +227,7 @@ async def amain() -> int:
         on_publish=on_publish,
         on_connect=on_connect,
         on_disconnect=on_disconnect,
+        device_ip=str(opts.get("device_ip") or ""),
     )
 
     loop = asyncio.get_running_loop()
@@ -275,6 +277,8 @@ async def amain() -> int:
             "lan_ip ist leer – der Roboter bekommt keine Upload-URLs, "
             "die Karte kann nicht ankommen"
         )
+    if opts.get("device_ip"):
+        log.info("Roboter-IP-Filter: device_* nur von %s", opts["device_ip"])
     log.info("Dreame Local Cloud v%s", VERSION)
     log.info(
         "Bereit: Broker :%d, API :%d, Web :%d, Upload :%d, Discovery %s, Auto-DID=%s",

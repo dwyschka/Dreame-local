@@ -92,6 +92,7 @@ Beides gleichzeitig geht, erzeugt aber doppelte Entitäten. Empfehlung:
    discovery_prefix: "homeassistant"
    lan_ip: "10.10.48.10"                 # IP des HA-Hosts (BindDomain + Upload-URLs)
    upload_host: ""                       # optional: Hostname statt lan_ip, z. B. eu.iot.dreame.tech
+   device_ip: ""                         # optional: nur dieser Host darf sich als Roboter verbinden
    mac: ""                               # optional, für die Integration
    broker_port: 19973
    api_port: 13267
@@ -108,6 +109,12 @@ Beides gleichzeitig geht, erzeugt aber doppelte Entitäten. Empfehlung:
    Presigned-URLs; dann `eu.iot.dreame.tech` eintragen (DNS-Rewrite auf den
    HA-Host). Die Karten-Download-URLs nutzen weiterhin den Host, über den die
    Integration die API aufruft.
+
+   `device_ip` ist eine optionale Absicherung: Ist sie gesetzt, werden
+   MQTT-Clients mit der Kennung `device_<did>` nur von dieser IP akzeptiert.
+   Das verhindert, dass ein Testclient mit den Roboter-Zugangsdaten die
+   echte Roboter-Session besetzt. Der Broker wirft außerdem bei gleicher
+   Client-ID die alte Session aktiv raus (MQTT-Takeover).
 
 4. **Starten** → Logs beobachten:
    ```
@@ -199,6 +206,7 @@ PUT  /upload/<name>          (für den Roboter, HTTPS auf 8443)
 |---|---|
 | Add-on startet nicht | Port 19973 belegt (z. B. alter Testbroker) → Prozess stoppen, Add-on neu starten |
 | Roboter verbindet nicht | DNS-Rewrite prüfen (`dig`), Port 19973 in der Firewall, `lan_ip` korrekt |
+| „Roboter verbunden" von falscher IP | Ein Testclient nutzt `device_<did>`; `device_ip` auf die echte Roboter-IP setzen und den Testclient stoppen. Der Broker wirft die alte Session bei gleicher Client-ID raus |
 | `TLS handshake failed` im Log | falsches Zertifikat in `app/certs/` (muss die Dreame-Kette sein) |
 | Keine Entitäten in HA | Mosquitto/MQTT-Integration prüfen, `discovery_prefix` = `homeassistant` |
 | Roboter „offline" in der Dreame-App | **normal** im lokalen Betrieb |
