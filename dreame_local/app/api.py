@@ -270,7 +270,10 @@ class DreameApi:
         body = await request.json()
         name = str(body.get("filename") or "").lstrip("/")
         resolved = self._resolve(name)
-        host = self.public_host or (request.host.split(":")[0] if request.host else "localhost")
+        # Die Integration laedt die Karte ueber denselben Host, ueber den sie
+        # auch die API aufruft (z. B. eu.iot.dreame.tech:13267). Ein Wechsel
+        # auf die LAN-IP bricht bei ihrem eigenen TLS-Client.
+        host = (request.host.split(":")[0] if request.host else "") or self.public_host or "localhost"
         # Wichtig: eine Query muss vorhanden sein, denn die Integration haengt
         # beim Wiederverwenden einer gecachten URL "&current=<ts>" an.
         expires = int(time.time()) + 1800
@@ -279,7 +282,7 @@ class DreameApi:
             f"?Expires={expires}&obj={quote(resolved, safe='/')}"
         )
         log.info("getDownloadUrl %r -> %s", name, url)
-        events.add("map_url", requested=name, served=resolved)
+        events.add("map_url", requested=name, served=resolved, url=url)
         return _ok(url)
 
     async def device_file(self, request: web.Request) -> web.Response:
