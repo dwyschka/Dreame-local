@@ -90,7 +90,8 @@ Beides gleichzeitig geht, erzeugt aber doppelte Entitäten. Empfehlung:
    mqtt_username: ""
    mqtt_password: ""
    discovery_prefix: "homeassistant"
-   lan_ip: "10.10.48.10"                 # IP des HA-Hosts (BindDomain + Karten-URLs)
+   lan_ip: "10.10.48.10"                 # IP des HA-Hosts (BindDomain + Upload-URLs)
+   upload_host: ""                       # optional: Hostname statt lan_ip, z. B. eu.iot.dreame.tech
    mac: ""                               # optional, für die Integration
    broker_port: 19973
    api_port: 13267
@@ -101,6 +102,12 @@ Beides gleichzeitig geht, erzeugt aber doppelte Entitäten. Empfehlung:
 
    `lan_ip` ist die IP, unter der der Roboter den HA-Host erreicht
    (bei HA OS meist die LAN-IP der VM/des Hosts).
+
+   `upload_host` überschreibt nur den Host in den Upload-URLs (Port bleibt
+   `upload_port`). Manche Firmware akzeptiert keine IP-basierten
+   Presigned-URLs; dann `eu.iot.dreame.tech` eintragen (DNS-Rewrite auf den
+   HA-Host). Die Karten-Download-URLs nutzen weiterhin den Host, über den die
+   Integration die API aufruft.
 
 4. **Starten** → Logs beobachten:
    ```

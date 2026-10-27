@@ -257,19 +257,25 @@ class DreameApi:
         )
         if not candidates:
             log.warning("Datei %r fehlt und es gibt keine Uploads", name)
-            return name
-        newest = max(candidates, key=lambda p: p.stat().st_mtime)
-        rel = str(newest.relative_to(root))
-        if name:
-            log.warning("Datei %r fehlt, liefere stattdessen %r", name, rel)
-        else:
+            return ""
+        if not name:
+            newest = max(candidates, key=lambda p: p.stat().st_mtime)
+            rel = str(newest.relative_to(root))
             log.info("Kein Dateiname angegeben, liefere %r", rel)
-        return rel
+            return rel
+        # Keinen falschen Blob als Karte ausliefern (frueher wurde hier die
+        # neueste Datei zurueckgegeben – das maskierte fehlende Uploads).
+        log.warning("Datei %r fehlt, liefere nichts", name)
+        return ""
 
     async def download_url(self, request: web.Request) -> web.Response:
         body = await request.json()
         name = str(body.get("filename") or "").lstrip("/")
         resolved = self._resolve(name)
+        if not resolved:
+            log.warning("getDownloadUrl %r: keine Datei vorhanden", name)
+            events.add("map_url", requested=name, served="", exists=False)
+            return _ok("")
         # Die Integration laedt die Karte ueber denselben Host, ueber den sie
         # auch die API aufruft (z. B. eu.iot.dreame.tech:13267). Ein Wechsel
         # auf die LAN-IP bricht bei ihrem eigenen TLS-Client.
@@ -282,7 +288,7 @@ class DreameApi:
             f"?Expires={expires}&obj={quote(resolved, safe='/')}"
         )
         log.info("getDownloadUrl %r -> %s", name, url)
-        events.add("map_url", requested=name, served=resolved, url=url)
+        events.add("map_url", requested=name, served=resolved, url=url, exists=True)
         return _ok(url)
 
     async def device_file(self, request: web.Request) -> web.Response:

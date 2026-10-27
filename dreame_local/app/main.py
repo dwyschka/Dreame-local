@@ -25,7 +25,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.3.11"
+VERSION = "0.3.12"
 
 
 def load_options() -> dict:
@@ -44,6 +44,7 @@ def load_options() -> dict:
         "mqtt_password",
         "device_name",
         "lan_ip",
+        "upload_host",
         "broker_port",
         "web_port",
         "upload_port",
@@ -181,7 +182,10 @@ async def amain() -> int:
     upload_port = int(opts.get("upload_port") or 8443)
     api_port = int(opts.get("api_port") or 13267)
     lan_ip = str(opts.get("lan_ip") or "")
-    upload_base = f"https://{lan_ip}:{upload_port}" if lan_ip else ""
+    # Optionaler Hostname fuer die Upload-URLs (statt der LAN-IP). Manche
+    # Roboter-Firmware akzeptiert keine IP-basierten Presigned-URLs.
+    upload_host = str(opts.get("upload_host") or "").strip() or lan_ip
+    upload_base = f"https://{upload_host}:{upload_port}" if upload_host else ""
 
     # Auto-Provisioning: DID/UID/Modell kommen aus dem MQTT-CONNECT bzw. dev_start.
     if not did:
