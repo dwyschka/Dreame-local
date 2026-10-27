@@ -13,6 +13,8 @@ schlanken MQTT-Discovery-Modus ohne HACS.
 > `dreame.vacuum.r2469a`, FW `4.3.9_1642`. Kartenblobs werden angenommen
 > und ausgeliefert; die Anzeige übernimmt die Integration/Karte.
 
+> 🇬🇧 **English installation guide:** [jump to English](#english-installation-guide)
+
 ---
 
 ## 1. Voraussetzungen
@@ -143,9 +145,9 @@ Der Roboter fragt `{shard}.mt.{region}.iot.dreame.tech` ab (bei mir
 **Fritzbox/Router** ohne Wildcard: exakt `10000.mt.eu.iot.dreame.tech`
 eintragen (den Shard-Namen bekommst du aus der Cloud, Feld `bindDomain`).
 
-> ⚠️ **Nicht** umleiten: `eu.iot.dreame.tech`, `dreame-eu.iot.dreame.tech`,
-> `oss.iot.dreame.tech`, `*.dreame.tech`. Sonst brechen App, OTA und
-> Karten-Downloads.
+> ⚠️ Für Modus B muss `eu.iot.dreame.tech` auf den HA-Host zeigen (API und
+> Karten-Downloads). **Nicht** umleiten: `dreame-eu.iot.dreame.tech`,
+> `oss.iot.dreame.tech`, `*.dreame.tech` — sonst brechen OTA/CDN.
 
 Prüfen:
 
@@ -285,3 +287,244 @@ python dreame_local/app/main.py
 ```
 
 Ohne `MQTT_HOST` startet nur Broker + Web-UI (Port 8099), ohne Discovery.
+
+---
+
+## English Installation Guide
+
+This guide installs **Dreame Local Cloud** as a Home Assistant add-on and
+moves a Dreame robot (for example the L10s Ultra Gen 2, `dreame.vacuum.r2469a`)
+from the Dreame cloud to the local add-on. The existing **Dreame Vacuum**
+integration (Tasshack) and its map cards keep working against the local API
+(Mode B, recommended).
+
+> Tested with add-on **0.3.18+**. That version includes the local map fallback,
+> live robot position and the persisted cleaning trail.
+
+### 1. Requirements
+
+| Item | Why |
+|---|---|
+| Home Assistant OS or Supervised | Required for add-ons |
+| HACS + **Dreame Vacuum** (Tasshack) | Entities, map and map cards (Mode B) |
+| Mosquitto + MQTT integration | Only for the optional Mode A (discovery) |
+| AdGuard Home, Pi-hole or a router with DNS rewrites | The robot must resolve the local add-on |
+| Robot already paired with the Dreame app | Pairing and certificates stay as they are |
+| Add-on certificates in `dreame_local/app/certs/` | Already included; keep them private |
+
+### 2. Ports
+
+| Port | Purpose |
+|---|---|
+| `19973/tcp` | MQTT over TLS for the robot (DNS rewrite target) |
+| `13267/tcp` | Dreame API emulation (DNS rewrite target for the integration) |
+| `8443/tcp` | HTTPS upload endpoint for map/log files |
+| `8099/tcp` | Web UI, diagnostics and REST API |
+
+Open `19973`, `13267` and `8443` from the robot/integration VLAN to the HA
+host. Do **not** expose any of these ports to the internet.
+
+### 3. Install the add-on
+
+1. In Home Assistant open **Settings → Add-ons → Add-on Store**.
+2. Open the three-dot menu (⋮) → **Repositories**.
+3. Add `https://github.com/dwyschka/Dreame-local` and confirm.
+4. Reload the store, open **Dreame Local Cloud** and click **Install**.
+5. Open the **Configuration** tab and paste the configuration below, then
+   start the add-on.
+
+```yaml
+device_did: ""                        # empty = auto-detect on connect
+device_uid: ""                        # empty = auto-detect (dev_start)
+device_model: "dreame.vacuum.r2469a"
+region: "eu"
+device_name: "Dreame"
+mqtt_host: ""                         # empty = no discovery duplicates (Mode B)
+mqtt_port: 1883
+mqtt_username: ""
+mqtt_password: ""
+discovery_prefix: "homeassistant"
+lan_ip: "192.168.1.10"                # HA host IP reachable by the robot
+upload_host: ""                       # optional: e.g. eu.iot.dreame.tech instead of lan_ip
+device_ip: ""                         # optional: only this robot IP may use device_<did>
+mac: ""                               # optional
+broker_port: 19973
+api_port: 13267
+web_port: 8099
+upload_port: 8443
+log_level: "info"
+```
+
+Notes:
+
+- `lan_ip` is the HA host IP that the robot can reach (normally the LAN IP of
+  the HA OS VM/host).
+- `upload_host` only changes the host in the presigned upload URLs; the port
+  stays `upload_port`. Some firmware rejects IP-based URLs. In that case set
+  `upload_host: eu.iot.dreame.tech` and make that name resolve to the HA host.
+- `device_ip` is optional. Leave it empty unless you need to lock the robot
+  session to one IP. The broker also performs an MQTT session takeover when the
+  same client ID reconnects.
+- `device_did`/`device_uid` can stay empty. Set them if auto-detection is not
+  desired.
+- `mqtt_host` stays empty for Mode B. Set it only for the optional Mode A.
+
+After start, the log should contain:
+
+```text
+MQTT-Broker lauscht auf :19973 (TLS)
+Web-UI auf :8099
+HTTPS-Upload auf :8443
+Dreame-API-Emulation auf :13267 (HTTPS)
+```
+
+### 4. DNS rewrites (most important step)
+
+The robot resolves its MQTT broker and the API through DNS. Point these names
+to the HA host:
+
+```text
+eu.iot.dreame.tech          ->  <HA-IP>
+*.mt.eu.iot.dreame.tech     ->  <HA-IP>
+```
+
+If your DNS server has no wildcard support, add the exact broker name from the
+robot's `bindDomain`, usually:
+
+```text
+10000.mt.eu.iot.dreame.tech ->  <HA-IP>
+```
+
+**Do not rewrite** `dreame-eu.iot.dreame.tech`, `oss.iot.dreame.tech` or
+`*.dreame.tech`; these are used for OTA/CDN and must keep resolving to the real
+cloud. `eu.iot.dreame.tech` is required locally for the API and map download
+URLs in Mode B.
+
+Verify from a client in the robot/integration VLAN:
+
+```bash
+dig +short eu.iot.dreame.tech
+dig +short 10000.mt.eu.iot.dreame.tech
+```
+
+Both must return the HA IP.
+
+### 5. Start the robot against the add-on
+
+1. Power-cycle the robot completely (switch it off, wait a few seconds, switch
+   it on).
+2. Wait 30–90 seconds.
+3. In the add-on log you should see:
+
+```text
+CONNECT device_<did> user=<uid> von ('<robot-ip>', ...)
+Roboter verbunden: did=<did>
+SUBSCRIBE /ctrl/<did>/
+SUBSCRIBE /result/<did>/
+```
+
+If you see `mqtt_reject`, the connecting IP does not match `device_ip`. If a
+test client uses the robot credentials, set `device_ip` to the real robot IP
+and stop the test client.
+
+### 6. Home Assistant integration (Mode B)
+
+1. Install **Dreame Vacuum** (Tasshack) through HACS if it is not installed.
+2. Open **Settings → Devices & Services → Add Integration → Dreame Vacuum**.
+3. Select account type **Dreame Home**, country/region `eu`.
+4. Username and password can be arbitrary values; the local add-on accepts
+   them. Use the same values consistently.
+5. The integration receives the local `bindDomain` (`<HA-IP>:19973`) and
+   connects to the add-on through the DNS rewrites.
+6. Keep `mqtt_host` empty in the add-on to avoid duplicate discovery entities.
+
+The existing vacuum entity, sensors, map camera and map cards keep working.
+Reload the integration after an add-on update.
+
+### 7. Map, live position and trail
+
+The map is served by the add-on through the Dreame API emulation. With 0.3.18:
+
+- The add-on answers `REQUEST_MAP` and `getDeviceData` with a full I-frame.
+- The current robot position is taken from the live P-frames.
+- The cleaning trail is accumulated, shown on the map and persisted in
+  `/data/map_path.txt`.
+- A new cleaning (`START`) clears the old trail.
+
+If the map is empty:
+
+1. Open the add-on Web UI (`http://<HA-IP>:8099`) and use **Karte prüfen**.
+2. Check `/api/diagnostics` for `uploads`, `presigned_urls` and `upload`.
+3. Confirm that the robot can reach `8443` and that `upload_host`/`upload_port`
+   are correct.
+4. Trigger a short cleaning or power-cycle the robot so it requests fresh
+   presigned URLs.
+5. Reload the integration.
+
+The map room colors are a renderer/color-scheme detail: the imported cloud map
+does not contain the app's per-room color indexes, so the integration may use
+its first palette color for all rooms. Change the integration's color scheme or
+enrich the map with color indexes if you need the exact cloud colors.
+
+### 8. Verify
+
+- Add-on Web UI: `http://<HA-IP>:8099`
+  - Clients list shows `device_<did>` and `p_...` (the integration).
+  - State shows the robot as online.
+- Log: `CONNECT`, `SUBSCRIBE`, `presigned_urls`, `upload`.
+- Home Assistant: vacuum entity, map camera and map card are available.
+
+Useful REST calls:
+
+```text
+GET  http://<HA-IP>:8099/api/state
+GET  http://<HA-IP>:8099/api/diagnostics
+GET  http://<HA-IP>:8099/api/mapcheck
+POST http://<HA-IP>:8099/api/command   {"action":"start"}
+```
+
+### 9. Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| Add-on does not start | Port `19973`/`13267`/`8443` already in use; stop the old test broker/container |
+| Robot does not connect | Check DNS rewrites, port `19973` and the firewall; verify `lan_ip` |
+| `mqtt_reject` in the log | `device_ip` does not match the robot; correct it or clear it |
+| Robot connects from the wrong IP | A test client is using `device_<did>`; stop it and/or set `device_ip` |
+| `TLS handshake failed` | Wrong certificate in `app/certs/`; use the Dreame chain from the app |
+| No integration entities | Check HACS integration, DNS for `eu.iot.dreame.tech`, and reload the integration |
+| Map empty / `GET /files/...` 404 | No upload yet or stale URL; check `8443`, `upload_host`, `uploads` and power-cycle the robot |
+| Map has no trail | Update to 0.3.18+, trigger a cleaning; the trail is persisted per run |
+| Robot offline in the Dreame app | Expected in local mode |
+| Return to the cloud | Remove the DNS rewrites and power-cycle the robot |
+
+### 10. Security
+
+- The broker accepts any authentication. Run it only in a trusted LAN/VLAN.
+- Never expose ports `19973`, `13267`, `8443` or `8099` to the internet.
+- `dreame_local/app/certs/server.key` is a key extracted from the Dreame app.
+  Keep it private and never publish it in a public repository.
+- Local mode means no remote access, no cloud map in the Dreame app and no OTA
+  through the app.
+- This is not an official Dreame product. Use it at your own risk and only with
+  your own robot.
+
+### 11. Optional Mode A (MQTT discovery)
+
+Set `mqtt_host` to the Mosquitto host, configure `mqtt_username`/
+`mqtt_password`, and keep `discovery_prefix: homeassistant`. The add-on then
+publishes a vacuum, sensors, selects and buttons directly through MQTT
+discovery. No HACS integration is required. Do not run Mode A and Mode B at the
+same time unless you want duplicate entities.
+
+### 12. Development without Home Assistant
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r dreame_local/requirements.txt
+DEVICE_DID=909669328 DEVICE_UID=VB847569 DEVICE_MODEL=dreame.vacuum.r2469a \
+REGION=eu LAN_IP=<your-ip> DATA_DIR=./data \
+python dreame_local/app/main.py
+```
+
+Without `MQTT_HOST`, only the broker, API and Web UI (port 8099) start.

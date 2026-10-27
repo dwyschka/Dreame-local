@@ -8,6 +8,33 @@ Empfohlen: die bestehende **Dreame-Vacuum-Integration** (HACS) läuft
 unverändert gegen dieses Add-on, inklusive Karte und Karten-Cards.
 Optional gibt es einen schlanken MQTT-Discovery-Modus ohne HACS.
 
+> 🇬🇧 **English installation guide:** [full guide in the repository README](https://github.com/dwyschka/Dreame-local/blob/main/README.md#english-installation-guide)
+
+## English Installation (short)
+
+1. In Home Assistant open **Settings → Add-ons → Add-on Store → ⋮ →
+   Repositories** and add
+   `https://github.com/dwyschka/Dreame-local`.
+2. Install **Dreame Local Cloud**, open **Configuration**, set `lan_ip` to the
+   HA host IP reachable by the robot, and start the add-on.
+3. Add DNS rewrites:
+   ```text
+   eu.iot.dreame.tech        ->  <HA-IP>   # API for the integration
+   *.mt.eu.iot.dreame.tech   ->  <HA-IP>   # MQTT for the robot
+   ```
+   Without wildcard support, use the exact name from `bindDomain`
+   (`10000.mt.eu.iot.dreame.tech` on most robots).
+4. Install **Dreame Vacuum** through HACS, add the integration, choose
+   **Dreame Home**, region `eu`, username/password can be arbitrary.
+5. Power-cycle the robot and wait 30–90 seconds. It should connect to the
+   local add-on; the log shows `CONNECT device_<did>` and `SUBSCRIBE`.
+6. Keep `mqtt_host` empty for the integration mode. Use
+   `upload_host: eu.iot.dreame.tech` if the robot rejects IP-based upload
+   URLs.
+
+Ports: `19973` (MQTT), `13267` (API), `8443` (uploads), `8099` (Web UI).
+Never expose them to the internet.
+
 ## Installation
 
 1. Einstellungen → Add-ons → Add-on-Store → ⋮ → **Repositories**
@@ -49,6 +76,8 @@ mqtt_username: ""
 mqtt_password: ""
 discovery_prefix: "homeassistant"
 lan_ip: "10.10.48.10"          # IP des HA-Hosts (BindDomain + Karten-URLs)
+upload_host: ""                # optional: Hostname statt lan_ip, z. B. eu.iot.dreame.tech
+device_ip: ""                  # optional: nur dieser Host darf sich als Roboter verbinden
 broker_port: 19973
 api_port: 13267
 web_port: 8099
