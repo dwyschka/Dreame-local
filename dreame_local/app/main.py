@@ -27,7 +27,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.3.17"
+VERSION = "0.3.18"
 
 
 def load_options() -> dict:
@@ -254,6 +254,24 @@ async def amain() -> int:
                 raw = bytearray(zlib.decompress(base64.b64decode(text + "=" * (-len(text) % 4))))
                 if len(raw) < 27:
                     continue
+                # Pfadsegment (tr) aus dem Live-Frame sammeln. Der I-Frame
+                # (Map 24) enthaelt keinen Pfad; ohne diese Sammlung wuerde
+                # die Action-Antwort die gefahrene Spur immer wieder leeren.
+                lw = int.from_bytes(raw[19:21], "little")
+                lh = int.from_bytes(raw[21:23], "little")
+                try:
+                    linfo = json.loads(bytes(raw[27 + lw * lh:]).decode("utf8"))
+                    tr = linfo.get("tr")
+                    if isinstance(tr, str) and tr and not device.map_path.endswith(tr):
+                        device.map_path += tr
+                        if len(device.map_path) > 30000:
+                            device.map_path = device.map_path[-30000:]
+                        try:
+                            (data_dir / "map_path.txt").write_text(device.map_path)
+                        except OSError:
+                            pass
+                except Exception:
+                    pass
                 raw[0:2] = saved_map_id.to_bytes(2, "little")
                 param["value"] = base64.b64encode(zlib.compress(bytes(raw), 9)).decode("ascii")
                 changed = True

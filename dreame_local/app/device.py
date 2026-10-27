@@ -99,6 +99,13 @@ class Device:
         self.extra: dict[str, Any] = {}          # props wie ota_state
         self.info: dict[str, Any] = {}
         self.map_info: str | None = None
+        self.map_path = ""                       # gesammelte tr-Pfadsegmente
+        try:
+            path_file = self.data_dir / "map_path.txt"
+            if path_file.is_file():
+                self.map_path = path_file.read_text().strip()
+        except OSError:
+            pass
         self.online = False
         self.ver: str | None = None
         self._mid = int(time.time()) % 100000
@@ -351,10 +358,20 @@ class Device:
             self._pending.pop(rid, None)
             raise TimeoutError(f"Keine Antwort auf {method}")
 
+    def clear_map_path(self) -> None:
+        """Neue Reinigung: alte gefahrene Spur verwerfen."""
+        self.map_path = ""
+        try:
+            (self.data_dir / "map_path.txt").unlink()
+        except OSError:
+            pass
+
     async def action(self, name: str, value: Any = None, piid: int | None = None) -> Any:
         a = ACTIONS.get(str(name).upper())
         if not a:
             raise ValueError(f"Unbekannte Action {name}")
+        if str(name).upper() == "START":
+            self.clear_map_path()
         params: dict[str, Any] = {"did": self.did, "siid": a["siid"], "aiid": a["aiid"]}
         params["in"] = [] if piid is None else [{"piid": piid, "value": value}]
         return await self.send("action", params)

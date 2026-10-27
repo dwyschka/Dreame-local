@@ -248,6 +248,8 @@ class DreameApi:
                         pass
 
             info["rpur"] = 1
+            if getattr(self.dev, "map_path", ""):
+                info["tr"] = self.dev.map_path
             raw = bytes(raw[:image_end]) + json.dumps(info, separators=(",", ":")).encode("utf8")
             return base64.b64encode(zlib.compress(raw, 9)).decode("ascii")
         except Exception:
@@ -433,6 +435,13 @@ class DreameApi:
         rid = data.get("id") or body.get("id")
         log.info("sendCommand %s %s", method, json.dumps(params)[:300] if params is not None else "")
         try:
+            if (
+                method == "action"
+                and isinstance(params, dict)
+                and str(params.get("siid")) == "2"
+                and str(params.get("aiid")) == "1"
+            ):
+                self.dev.clear_map_path()
             result = await self.dev.send(str(method), params, timeout=15)
             if method == "get_properties":
                 result = self._complete_properties(result, params)
