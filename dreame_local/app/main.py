@@ -25,7 +25,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.3.13"
+VERSION = "0.3.14"
 
 
 def load_options() -> dict:
@@ -81,17 +81,32 @@ async def upload_server(
             response = await handler(request)
         except Exception as exc:  # pragma: no cover
             ulog.warning("Upload-Fehler %s %s: %s", request.method, request.path_qs, exc)
-            events.add("upload_error", path=request.path, error=str(exc))
+            events.add(
+                "upload_error",
+                path=request.path,
+                method=request.method,
+                error=str(exc),
+            )
             raise
         ulog.info("<- %s %s", response.status, request.path_qs)
         return response
 
     app = web.Application(client_max_size=1024 * 1024 * 1024, middlewares=[upload_log])
 
-    async def put(request: web.Request) -> web.Response:
+    async def upload(request: web.Request) -> web.Response:
         name = request.match_info["name"].replace("..", "_").lstrip("/")
         if name.strip("/") == "__selftest":
             return web.Response(text="ok")
+        # Der Roboter prueft die Presigned-URL offenbar vor dem PUT mit einer
+        # anderen Methode (GET/HEAD/OPTIONS). Frueher antwortete aiohttp dort
+        # mit 405, worauf der Roboter den Upload abbrach.
+        if request.method not in ("PUT", "POST"):
+            ulog.info(
+                "Upload-Probe %s %s (kein Body erwartet)", request.method, request.path_qs
+            )
+            return web.Response(
+                text="ok", headers={"Allow": "PUT, POST, GET, HEAD, OPTIONS"}
+            )
         target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)
         size = 0
@@ -105,16 +120,13 @@ async def upload_server(
         events.add("upload", name=name, size=size)
         return web.Response(text="ok")
 
-    app.add_routes(
-        [
-            web.put("/iot/tmp/000000/{name:.*}", put),
-            web.post("/iot/tmp/000000/{name:.*}", put),
-            web.put("/device-log/pack/000000/{name:.*}", put),
-            web.post("/device-log/pack/000000/{name:.*}", put),
-            web.put("/upload/{name:.*}", put),
-            web.post("/upload/{name:.*}", put),
-        ]
-    )
+    # Alle Methoden, damit GET/HEAD/OPTIONS-Probes nicht mit 405 abbrechen.
+    routes = [
+        "/iot/tmp/000000/{name:.*}",
+        "/device-log/pack/000000/{name:.*}",
+        "/upload/{name:.*}",
+    ]
+    app.add_routes([web.route("*", path, upload) for path in routes])
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.load_cert_chain(cert, key)
     runner = web.AppRunner(app, access_log=ulog)
