@@ -248,6 +248,12 @@ class DreameApi:
                         pass
 
             info["rpur"] = 1
+            # Die Integration erlaubt Raum-/Kartenaktionen nur bei
+            # saved_map_status == 2 (has_saved_map). Der importierte Frame
+            # hat keinen ris-Wert und wird sonst als "nicht gespeichert"
+            # behandelt ("Diese Aktion ist auf der aktuellen Karte nicht
+            # verfügbar").
+            info["ris"] = 2
             if getattr(self.dev, "map_path", ""):
                 info["tr"] = self.dev.map_path
             raw = bytes(raw[:image_end]) + json.dumps(info, separators=(",", ":")).encode("utf8")
