@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 import logging
+import math
+import struct
 import zlib
 from pathlib import Path
 from typing import Any
@@ -53,7 +56,8 @@ input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px soli
 </div>
 <div class="row"><button id="refresh">Aktualisieren</button>
 <button id="mapreq">Karte anfordern</button>
-<button id="mapcheck">Karte prüfen</button></div>
+<button id="mapcheck">Karte prüfen</button>
+<a href="rooms" style="align-self:center">Räume bearbeiten →</a></div>
 <pre id="log"></pre>
 <h3 style="font-size:1rem">Diagnose</h3>
 <pre id="diag">…</pre>
@@ -124,6 +128,154 @@ tick(); setInterval(tick, 3000);
 </script></body></html>"""
 
 
+ROOMS_PAGE = """<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-store">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Räume – Dreame Local</title>
+<style>
+:root{color-scheme:light dark}
+body{font:14px/1.4 system-ui,sans-serif;margin:0;padding:16px;max-width:1200px}
+h1{font-size:1.2rem;margin:.2rem 0 .2rem}
+a{color:#49a}
+.editor{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-top:10px}
+.mapwrap{position:relative;flex:1 1 520px;min-width:300px;max-width:100%}
+#mapimg{width:100%;height:auto;display:block;border-radius:10px;background:#222}
+#overlay{position:absolute;inset:0;width:100%;height:100%}
+#overlay rect{cursor:pointer}
+#overlay text{pointer-events:none;font-size:9px;fill:#fff;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px}
+.panel{flex:0 1 320px;min-width:260px}
+.card{background:#8882;border-radius:10px;padding:10px;margin-bottom:10px}
+.k{font-size:.72rem;opacity:.7;text-transform:uppercase;letter-spacing:.04em}
+button{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid #8886;background:#8881;cursor:pointer;margin:2px}
+button:disabled{opacity:.4;cursor:default}
+.room{display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.room.sel{border-color:#49a;background:#49a2}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+small{opacity:.7}
+#hint{min-height:2.5em;opacity:.8}
+</style></head><body>
+<h1>Raumaufteilung <small id="mapid"></small></h1>
+<a href="./">← Zurück</a>
+<div class="editor">
+  <div class="mapwrap">
+    <img id="mapimg" alt="Karte">
+    <svg id="overlay" preserveAspectRatio="none"></svg>
+  </div>
+  <div class="panel">
+    <div class="card"><div class="k">Status</div><div id="status">lade …</div></div>
+    <div class="card"><div class="k">Räume</div><div id="roomlist"></div></div>
+    <div class="card">
+      <div class="k">Aktionen</div>
+      <button id="rename" disabled>Umbenennen</button>
+      <button id="merge" disabled>Zusammenführen</button>
+      <button id="split" disabled>Teilen</button>
+      <button id="reload">Aktualisieren</button>
+      <div id="hint"></div>
+    </div>
+  </div>
+</div>
+<script>
+const palette=['#4c78a8','#f58518','#54a24b','#b279a2','#72b7b2','#e45756','#9d755d','#bab0ac'];
+let data=null, selected=new Set(), splitMode=false, splitPts=[];
+const $=id=>document.getElementById(id);
+const img=$('mapimg'), overlay=$('overlay'), statusEl=$('status'), listEl=$('roomlist'), hint=$('hint');
+
+async function j(url,opt){const r=await fetch(url,opt); const t=await r.text(); try{return JSON.parse(t)}catch(e){throw new Error(t.slice(0,300))}}
+function colorFor(id){return palette[(Number(id)-1+palette.length)%palette.length]}
+
+async function load(){
+  try{
+    data=await j('api/rooms?t='+Date.now());
+    if(!data.ok){statusEl.textContent=data.error||'Keine Kartendaten';return}
+    $('mapid').textContent='Map '+data.map_id+' · '+data.width+'×'+data.height;
+    img.src='api/map.png?t='+Date.now();
+    overlay.setAttribute('viewBox',`0 0 ${data.width} ${data.height}`);
+    statusEl.textContent=(data.rooms||[]).length+' Räume geladen';
+    render();
+  }catch(e){statusEl.textContent='Fehler: '+e.message}
+}
+function render(){
+  if(!data) return;
+  overlay.innerHTML='';
+  const NS='http://www.w3.org/2000/svg';
+  for(const r of data.rooms||[]){
+    const b=r.bbox;
+    const rect=document.createElementNS(NS,'rect');
+    rect.setAttribute('x',b[0]); rect.setAttribute('y',b[1]);
+    rect.setAttribute('width',Math.max(1,b[2]-b[0])); rect.setAttribute('height',Math.max(1,b[3]-b[1]));
+    rect.setAttribute('fill',(r.color||colorFor(r.id))+'33');
+    rect.setAttribute('stroke',selected.has(r.id)?'#fff':'#0008');
+    rect.setAttribute('stroke-width',selected.has(r.id)?2:1);
+    rect.addEventListener('click',ev=>{ev.stopPropagation(); toggle(r.id)});
+    overlay.appendChild(rect);
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',(b[0]+b[2])/2); t.setAttribute('y',(b[1]+b[3])/2);
+    t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','middle');
+    t.textContent=r.name||('Raum '+r.id);
+    overlay.appendChild(t);
+  }
+  if(splitPts.length===1){
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',splitPts[0][0]); c.setAttribute('cy',splitPts[0][1]);
+    c.setAttribute('r',2); c.setAttribute('fill','#fff'); overlay.appendChild(c);
+  }
+  listEl.innerHTML='';
+  for(const r of data.rooms||[]){
+    const div=document.createElement('div');
+    div.className='room'+(selected.has(r.id)?' sel':'');
+    div.innerHTML=`<span class="dot" style="background:${r.color||colorFor(r.id)}"></span><span>${r.name||('Raum '+r.id)}</span><small>#${r.id}</small>`;
+    div.onclick=()=>toggle(r.id);
+    listEl.appendChild(div);
+  }
+  $('rename').disabled=selected.size!==1;
+  $('merge').disabled=selected.size!==2;
+  $('split').disabled=selected.size!==1;
+  $('split').textContent=splitMode?'Teilen abbrechen':'Teilen';
+  hint.textContent=splitMode?'Zwei Punkte auf der Karte anklicken, um den Raum zu teilen.':'Räume anklicken, um sie auszuwählen.';
+}
+function toggle(id){if(selected.has(id))selected.delete(id);else selected.add(id);render()}
+overlay.addEventListener('click',ev=>{
+  if(!splitMode||selected.size!==1||!data) return;
+  const p=overlay.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY;
+  const q=p.matrixTransform(overlay.getScreenCTM().inverse());
+  const px=Math.max(0,Math.min(data.width,q.x)), py=Math.max(0,Math.min(data.height,q.y));
+  splitPts.push([px,py]);
+  if(splitPts.length===2){
+    const [a,b]=splitPts;
+    const line=[data.origin[0]+a[0]*data.grid, data.origin[1]+a[1]*data.grid,
+                data.origin[0]+b[0]*data.grid, data.origin[1]+b[1]*data.grid];
+    post({action:'split', id:[...selected][0], line});
+    splitPts=[]; splitMode=false;
+  }
+  render();
+});
+async function post(body){
+  statusEl.textContent='Sende …';
+  try{
+    const r=await j('api/rooms/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    statusEl.textContent=r.ok?'Befehl gesendet – Karte wird aktualisiert …':('Fehler: '+(r.error||'unbekannt'));
+    setTimeout(load,2500);
+  }catch(e){statusEl.textContent='Fehler: '+e.message}
+}
+$('rename').onclick=()=>{
+  if(selected.size!==1) return;
+  const id=[...selected][0];
+  const r=(data.rooms||[]).find(x=>x.id===id)||{};
+  const name=prompt('Neuer Raumname:',r.name||('Raum '+id));
+  if(name!==null&&name.trim()!=='') post({action:'rename',id,name:name.trim()});
+};
+$('merge').onclick=()=>{
+  if(selected.size!==2) return;
+  const ids=[...selected];
+  if(confirm('Räume '+ids.join(' + ')+' zusammenführen?')) post({action:'merge',ids});
+};
+$('split').onclick=()=>{ if(selected.size!==1) return; splitMode=!splitMode; splitPts=[]; render(); };
+$('reload').onclick=load;
+load(); setInterval(load,15000);
+</script></body></html>"""
+
+
 @web.middleware
 async def ingress_middleware(request: web.Request, handler):
     """HA-Ingress stellt /api/hassio_ingress/<token>/... voran."""
@@ -167,6 +319,10 @@ class Web:
                 web.get("/api/uploads", self.uploads),
                 web.get("/api/diagnostics", self.diagnostics),
                 web.get("/api/mapcheck", self.mapcheck),
+                web.get("/rooms", self.rooms_page),
+                web.get("/api/rooms", self.rooms_data),
+                web.get("/api/map.png", self.map_png),
+                web.post("/api/rooms/action", self.room_action),
                 web.post("/api/command", self.command),
                 web.put("/upload/{name:.*}", self.upload),
             ]
@@ -289,6 +445,244 @@ class Web:
         except Exception as exc:
             result["error"] = str(exc)
         return web.json_response(result)
+
+    # ---------------------------------------------------------- Raum-Editor
+    @staticmethod
+    def _decode_map_text(text: str):
+        text = text.strip()
+        if not text or text.startswith("{"):
+            return None
+        if "," in text:
+            text = text.split(",", 1)[0]
+        t = text.replace("_", "/").replace("-", "+")
+        t += "=" * (-len(t) % 4)
+        try:
+            raw = zlib.decompress(base64.b64decode(t, validate=False))
+        except Exception:
+            return None
+        if len(raw) < 27:
+            return None
+        width = int.from_bytes(raw[19:21], "little")
+        height = int.from_bytes(raw[21:23], "little")
+        image_end = 27 + width * height
+        if width <= 0 or height <= 0 or len(raw) < image_end:
+            return None
+        try:
+            info = json.loads(raw[image_end:].decode("utf-8"))
+        except Exception:
+            return None
+        return raw, width, height, info
+
+    def _load_map(self):
+        root = self.data_dir / "uploads" / f"ali_dreame/{self.dev.uid}/{self.dev.did}"
+        best = None
+        for name in ("9", "9.frame"):
+            path = root / name
+            try:
+                if not path.is_file():
+                    continue
+                decoded = self._decode_map_text(path.read_text(errors="replace"))
+                if not decoded:
+                    continue
+                raw, width, height, info = decoded
+                item = {
+                    "raw": raw, "width": width, "height": height, "info": info,
+                    "map_id": int.from_bytes(raw[0:2], "little"),
+                    "grid": int.from_bytes(raw[17:19], "little") or 50,
+                    "origin": info.get("origin") or [
+                        int.from_bytes(raw[23:25], "little", signed=True),
+                        int.from_bytes(raw[25:27], "little", signed=True),
+                    ],
+                    "name": name, "mtime": path.stat().st_mtime,
+                }
+                if best is None or item["mtime"] > best["mtime"]:
+                    best = item
+            except Exception:
+                continue
+        if best is None:
+            live = self.dev.props.get("6.1")
+            if isinstance(live, str) and live:
+                decoded = self._decode_map_text(live)
+                if decoded:
+                    raw, width, height, info = decoded
+                    best = {
+                        "raw": raw, "width": width, "height": height, "info": info,
+                        "map_id": int.from_bytes(raw[0:2], "little"),
+                        "grid": int.from_bytes(raw[17:19], "little") or 50,
+                        "origin": info.get("origin") or [0, 0],
+                        "name": "live", "mtime": 0,
+                    }
+        return best
+
+    def _room_names(self) -> dict[str, str]:
+        try:
+            data = json.loads((self.data_dir / "room_names.json").read_text())
+            return {str(k): str(v) for k, v in data.items()}
+        except Exception:
+            return {}
+
+    def _save_room_name(self, room_id: int, name: str) -> None:
+        names = self._room_names()
+        names[str(room_id)] = name
+        try:
+            (self.data_dir / "room_names.json").write_text(json.dumps(names, ensure_ascii=False))
+        except OSError:
+            pass
+
+    def _room_list(self, m):
+        raw, width, height = m["raw"], m["width"], m["height"]
+        origin_x, origin_y = m["origin"][0], m["origin"][1]
+        grid = m["grid"] or 50
+        names = self._room_names()
+        img = raw[27:27 + width * height]
+        bboxes = {}
+        for y in range(height):
+            for x in range(width):
+                v = img[y * width + x]
+                if 0 < v < 64:
+                    b = bboxes.get(v)
+                    if b is None:
+                        bboxes[v] = [x, y, x, y]
+                    else:
+                        if x < b[0]: b[0] = x
+                        if y < b[1]: b[1] = y
+                        if x > b[2]: b[2] = x
+                        if y > b[3]: b[3] = y
+        palette = ['#4c78a8', '#f58518', '#54a24b', '#b279a2', '#72b7b2', '#e45756', '#9d755d', '#bab0ac']
+        rooms = []
+        for rid, b in sorted(bboxes.items()):
+            rooms.append({
+                "id": rid,
+                "name": names.get(str(rid)) or f"Raum {rid}",
+                "color": palette[(rid - 1) % len(palette)],
+                "bbox": b,
+                "center": [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2],
+                "map_bbox": [
+                    origin_x + b[0] * grid, origin_y + b[1] * grid,
+                    origin_x + b[2] * grid, origin_y + b[3] * grid,
+                ],
+            })
+        return rooms
+
+    def _map_png(self, m) -> bytes:
+        raw, width, height = m["raw"], m["width"], m["height"]
+        img = raw[27:27 + width * height]
+        palette = ['#4c78a8', '#f58518', '#54a24b', '#b279a2', '#72b7b2', '#e45756', '#9d755d', '#bab0ac']
+
+        def rgb(hex_color):
+            hex_color = hex_color.lstrip('#')
+            return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
+        room_colors = [rgb(c) for c in palette]
+        colors = {
+            0: (250, 250, 250), 255: (45, 45, 45), 254: (43, 108, 176),
+            253: (160, 174, 192), 252: (160, 160, 160), 251: (210, 80, 80),
+            250: (235, 180, 100), 249: (72, 187, 120), 248: (160, 220, 160),
+        }
+        scale = 4
+        rows = []
+        for y in range(height * scale):
+            row = bytearray([0])
+            for x in range(width * scale):
+                v = img[(y // scale) * width + (x // scale)]
+                if 0 < v < 64:
+                    c = room_colors[(v - 1) % len(room_colors)]
+                elif 100 < v < 200:
+                    c = room_colors[(v - 101) % len(room_colors)]
+                else:
+                    c = colors.get(v, (120, 120, 120))
+                row += bytes(c)
+            rows.append(bytes(row))
+        W, H = width * scale, height * scale
+
+        def chunk(tag, data):
+            return struct.pack("!I", len(data)) + tag + data + struct.pack(
+                "!I", binascii.crc32(tag + data) & 0xFFFFFFFF
+            )
+
+        return (
+            b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack("!IIBBBBB", W, H, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"".join(rows), 9))
+            + chunk(b"IEND", b"")
+        )
+
+    async def rooms_page(self, request: web.Request) -> web.Response:
+        return web.Response(text=ROOMS_PAGE, content_type="text/html")
+
+    async def rooms_data(self, request: web.Request) -> web.Response:
+        m = self._load_map()
+        if not m:
+            return web.json_response({"ok": False, "error": "keine Kartendaten gefunden"})
+        return web.json_response({
+            "ok": True,
+            "map_id": m["map_id"],
+            "width": m["width"],
+            "height": m["height"],
+            "origin": m["origin"],
+            "grid": m["grid"],
+            "source": m["name"],
+            "mtime": int(m["mtime"]),
+            "rooms": self._room_list(m),
+        })
+
+    async def map_png(self, request: web.Request) -> web.Response:
+        m = self._load_map()
+        if not m:
+            raise web.HTTPNotFound()
+        return web.Response(body=self._map_png(m), content_type="image/png")
+
+    async def room_action(self, request: web.Request) -> web.Response:
+        body = await request.json()
+        action = str(body.get("action") or "")
+        m = self._load_map()
+        if not m:
+            return web.json_response({"ok": False, "error": "keine Karte geladen"})
+        map_id = int(body.get("map_id") or m["map_id"])
+        try:
+            if action == "rename":
+                rid = int(body.get("id"))
+                name = str(body.get("name") or "").strip()
+                if not name:
+                    raise ValueError("leerer Raumname")
+                payload = {
+                    "nsr": {str(rid): {
+                        "name": base64.b64encode(name.encode("utf-8")).decode("ascii"),
+                        "type": 0,
+                        "index": 0,
+                    }},
+                    "mapid": map_id,
+                }
+            elif action == "merge":
+                ids = [int(v) for v in (body.get("ids") or [])]
+                if len(ids) != 2:
+                    raise ValueError("genau zwei Räume auswählen")
+                payload = {"msr": ids, "mapid": map_id}
+            elif action == "split":
+                rid = int(body.get("id"))
+                line = [int(round(float(v))) for v in (body.get("line") or [])]
+                if len(line) != 4:
+                    raise ValueError("Teilungslinie fehlt")
+                payload = {"dsrid": line + [rid], "mapid": map_id}
+            else:
+                raise ValueError("unbekannte Aktion")
+            params = {
+                "did": self.dev.did,
+                "siid": 6,
+                "aiid": 2,
+                "in": [{"piid": 4, "value": json.dumps(payload, separators=(",", ":"))}],
+            }
+            log.info("Raum-Aktion %s: %s", action, payload)
+            result = await self.dev.send("action", params, timeout=20)
+            events.add("room_edit", action=action, map_id=map_id, result=result)
+            if isinstance(result, dict) and result.get("code") not in (0, None):
+                return web.json_response({"ok": False, "error": str(result), "result": result})
+            if action == "rename":
+                self._save_room_name(rid, name)
+            return web.json_response({"ok": True, "result": result})
+        except Exception as exc:
+            log.warning("Raum-Aktion fehlgeschlagen: %s", exc)
+            return web.json_response({"ok": False, "error": str(exc)})
 
     async def command(self, request: web.Request) -> web.Response:
         body: dict[str, Any] = await request.json()
