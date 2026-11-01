@@ -209,8 +209,8 @@ const img=$('mapimg'), overlay=$('overlay'), statusEl=$('status'), listEl=$('roo
 
 async function j(url,opt){const r=await fetch(url,opt); const t=await r.text(); try{return JSON.parse(t)}catch(e){throw new Error(t.slice(0,300))}}
 function colorFor(id){return palette[(Number(id)-1+palette.length)%palette.length]}
-function toPx(x,y){return [(x-data.origin[0])/data.grid,(y-data.origin[1])/data.grid]}
-function toMap(px,py){return [Math.round(data.origin[0]+px*data.grid),Math.round(data.origin[1]+py*data.grid)]}
+function toPx(x,y){return [(x-data.origin[0])/data.grid,data.height-1-(y-data.origin[1])/data.grid]}
+function toMap(px,py){return [Math.round(data.origin[0]+px*data.grid),Math.round(data.origin[1]+(data.height-1-py)*data.grid)]}
 
 async function load(force){
   try{
@@ -269,7 +269,7 @@ function render(){
     const l=document.createElementNS(NS,'line');
     l.setAttribute('x1',r.px); l.setAttribute('y1',r.py);
     l.setAttribute('x2',r.px+Math.cos(r.a*Math.PI/180)*7);
-    l.setAttribute('y2',r.py+Math.sin(r.a*Math.PI/180)*7);
+    l.setAttribute('y2',r.py-Math.sin(r.a*Math.PI/180)*7);
     l.setAttribute('stroke','#111'); l.setAttribute('stroke-width',1.5);
     overlay.appendChild(l);
   }
@@ -356,8 +356,8 @@ overlay.addEventListener('click',ev=>{
   splitPts.push([px,py]);
   if(splitPts.length===2){
     const [a,b]=splitPts;
-    const line=[data.origin[0]+a[0]*data.grid, data.origin[1]+a[1]*data.grid,
-                data.origin[0]+b[0]*data.grid, data.origin[1]+b[1]*data.grid];
+    const A=toMap(a[0],a[1]), B=toMap(b[0],b[1]);
+    const line=[A[0],A[1],B[0],B[1]];
     post({action:'split', id:[...selected][0], line});
     splitPts=[]; splitMode=false;
   }
@@ -693,12 +693,16 @@ class Web:
         palette = ['#4c78a8', '#f58518', '#54a24b', '#b279a2', '#72b7b2', '#e45756', '#9d755d', '#bab0ac']
         rooms = []
         for rid, b in sorted(bboxes.items()):
+            # Rohbild ist von unten nach oben gespeichert; die Integration
+            # rendert mit y = height - 1 - raw_y. Fuer die Anzeige und die
+            # Klickkoordinaten muessen wir genauso spiegeln.
+            display_bbox = [b[0], height - 1 - b[3], b[2], height - 1 - b[1]]
             rooms.append({
                 "id": rid,
                 "name": names.get(str(rid)) or f"Raum {rid}",
                 "color": palette[(rid - 1) % len(palette)],
-                "bbox": b,
-                "center": [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2],
+                "bbox": display_bbox,
+                "center": [(display_bbox[0] + display_bbox[2]) / 2, (display_bbox[1] + display_bbox[3]) / 2],
                 "map_bbox": [
                     origin_x + b[0] * grid, origin_y + b[1] * grid,
                     origin_x + b[2] * grid, origin_y + b[3] * grid,
@@ -725,8 +729,9 @@ class Web:
         rows = []
         for y in range(height * scale):
             row = bytearray([0])
+            raw_y = height - 1 - (y // scale)
             for x in range(width * scale):
-                v = img[(y // scale) * width + (x // scale)]
+                v = img[raw_y * width + (x // scale)]
                 if 0 < v < 64:
                     c = room_colors[(v - 1) % len(room_colors)]
                 elif 100 < v < 200:
@@ -771,7 +776,7 @@ class Web:
                     robot = {
                         "x": x, "y": y, "a": a,
                         "px": (x - origin_x) / grid,
-                        "py": (y - origin_y) / grid,
+                        "py": m["height"] - 1 - (y - origin_y) / grid,
                     }
         path = []
         raw_path = getattr(self.dev, "map_path", "")
@@ -787,7 +792,7 @@ class Web:
                     current = (x, y)
                 path.append([
                     (current[0] - origin_x) / grid,
-                    (current[1] - origin_y) / grid,
+                    m["height"] - 1 - (current[1] - origin_y) / grid,
                 ])
             if len(path) > 4000:
                 path = path[-4000:]
