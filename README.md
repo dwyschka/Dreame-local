@@ -217,6 +217,11 @@ Die Raum-/Zonenbefehle nutzen dieselbe `UPDATE_MAP_DATA`-Action
 (`siid 6, aiid 2`) wie die Dreame-Integration. Die HA-Karte ist damit für
 die Kartenbearbeitung nicht mehr erforderlich.
 
+Für die HA-Integration liefert das Add-on den Kartenframe im
+`frame_map`-Format aus (`fsm=1`, Segment-IDs erhalten). Dadurch erscheinen
+die Räume in `camera.*_map`, ohne dass `map.py` der Integration gepatcht
+werden muss.
+
 ---
 
 ## 8. Fehlerbehebung
@@ -483,6 +488,10 @@ map workspace and does not need the Home Assistant map card:
 
 The map edit commands use the same `UPDATE_MAP_DATA` action
 (`siid 6, aiid 2`) as the Dreame integration.
+
+For the Home Assistant integration, the add-on serves the map frame in
+`frame_map` format (`fsm=1`, segment IDs preserved). Rooms therefore appear
+in `camera.*_map` without patching the integration's `map.py`.
 
 If the map is empty:
 

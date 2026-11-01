@@ -419,40 +419,33 @@ Ablauf: `REQUEST_MAP` (siid 6/aiid 1) → Roboter lädt Dateien 0…9 hoch →
 `_sync.update_vacuum_mapinfo` (Status) → Integration holt die Dateien per
 `getDownloadUrl`/`getOss1dDownloadUrl` und rendert die Karte.
 
-### Decoder-Patch: Räume in der HA-Integration
+### API-Kompatibilität: Räume ohne Decoder-Patch (ab 0.7.1)
 
 Die Tasshack-Integration (v2.0.2) verwirft im Zweig
+`saved_map_status == 2` die Segment-IDs. Statt die Integration zu patchen,
+liefert das Add-on den I-Frame jetzt im **frame_map-Format** aus:
 
-```python
-) or map_data.saved_map_status == 2:
-```
+- JSON-Flag `fsm = 1` → der Decoder nimmt den `frame_map`-Zweig, der
+  Segment-IDs erhält.
+- Rohpixel werden auf diese Kodierung umgestellt:
+  - Raum 1–6: `segment_id << 2`
+  - Wand: `252` (Segment 63)
+  - Boden: `248` (Segment 62)
+  - Unbekannt: `244` (Segment 61)
+  - alles andere: Wand
+- `ris = 2` bleibt gesetzt, damit `has_saved_map` und die Kartenaktionen
+  verfügbar sind.
 
-alle Segment-IDs, weil sie `map_data.pixel_type[x, y] = MapPixelType.NEW_SEGMENT.value`
-setzt. Dadurch ist `camera.*_map` zwar vorhanden, aber `rooms: {}`.
-
-Lokaler Patch in `/config/custom_components/dreame_vacuum/dreame/map.py`
-(Backup: `map.py.bak`):
-
-1. Im `saved_map_status == 2`-Zweig alle Segmentpixel übernehmen:
-
-   ```python
-   map_data.pixel_type[x, y] = segment_id
-   ```
-
-2. Die Sonderbehandlung `if segment_id == 2: WALL` entfernen. In der
-   importierten Map 24 ist Segment 2 ein echter Raum; sonst fehlt Raum 2
-   (x0/y0/x1/y1 = null).
-
-Danach **Home Assistant neu starten** (ein Config-Entry-Reload reicht
-nicht, weil das Python-Modul bereits geladen ist). Ergebnis:
+Ergebnis mit **unveränderter** Integration:
 
 ```text
 camera.l10s_ultra_gen2_map
   rooms: 1,2,3,4,5,6  (alle mit x0/y0/x1/y1)
 ```
 
-Ein HACS-Update der Integration überschreibt `map.py`; der Patch muss
-danach erneut angewendet werden.
+Der frühere `map.py`-Patch (Backup `map.py.bak`) ist damit **nicht mehr
+nötig**. Die Originaldatei kann aus dem Backup wiederhergestellt werden;
+HACS-Updates der Integration sind wieder unkritisch.
 
 ### Kartenausrichtung im WebUI
 
