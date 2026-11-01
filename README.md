@@ -200,6 +200,23 @@ POST /api/command   {"method":"get_properties","params":[{"did":"…","siid":3,"
 PUT  /upload/<name>          (für den Roboter, HTTPS auf 8443)
 ```
 
+### Karte & Räume (Web-UI)
+
+Das Add-on-Panel → **Karte & Räume** (oder `/rooms`) ist der vollständige
+Kartenbereich, unabhängig von der HA-Karte:
+
+- Live-Karte mit Roboterposition, gefahrener Spur, Räumen und Raumfarben
+- Räume auswählen, **umbenennen**, **zusammenführen**, per Linie **teilen**
+  und **reinigen**
+- **Zonen**: Sperrzonen, Wisch-Verbote, virtuelle Wände und Reinigungszonen
+  aufziehen, speichern und eine Zonenreinigung starten
+- **Karte anfordern**, **Karte sichern** und **Schnellkartierung**
+- Start/Pause/Stop, Saugstufe, Wassermenge und Modus auf der Hauptseite
+
+Die Raum-/Zonenbefehle nutzen dieselbe `UPDATE_MAP_DATA`-Action
+(`siid 6, aiid 2`) wie die Dreame-Integration. Die HA-Karte ist damit für
+die Kartenbearbeitung nicht mehr erforderlich.
+
 ---
 
 ## 8. Fehlerbehebung
@@ -254,8 +271,8 @@ Mehr Hintergrund, Messungen und die Reverse-Engineering-Notizen:
   Dreame-App. Nicht weitergeben, nicht in öffentliche Repos stellen.
 - Solange der Roboter lokal läuft: kein Fernzugriff, keine App-Karte,
   kein OTA über die App.
-- Zeitpläne/DND werden nicht verwaltet. Karten werden gespeichert, aber
-  nicht gerendert.
+- Zeitpläne/DND werden nicht verwaltet. Karten werden im Add-on-WebUI
+  gerendert und bearbeitet; die HA-Karte bleibt optional.
 - Kein offizielles Dreame-Produkt, keine Garantie. Nutzung auf eigene
   Gefahr, nur für eigene Geräte.
 
@@ -450,6 +467,22 @@ The map is served by the add-on through the Dreame API emulation. With 0.3.18:
 - The cleaning trail is accumulated, shown on the map and persisted in
   `/data/map_path.txt`.
 - A new cleaning (`START`) clears the old trail.
+
+### 7a. Map & room management in the add-on Web UI
+
+Open the add-on panel → **Karte & Räume** (or `/rooms`). This is the complete
+map workspace and does not need the Home Assistant map card:
+
+- live map with robot position, cleaning trail, room areas and colors
+- select rooms, **rename**, **merge**, **split** by drawing a line, and
+  **clean** selected rooms
+- **zones**: draw no-go areas, no-mopping areas, virtual walls and cleaning
+  zones; save them and start a zone cleaning
+- **request map**, **back up map** and **fast mapping**
+- start/pause/stop, suction, water volume and cleaning mode on the main page
+
+The map edit commands use the same `UPDATE_MAP_DATA` action
+(`siid 6, aiid 2`) as the Dreame integration.
 
 If the map is empty:
 
