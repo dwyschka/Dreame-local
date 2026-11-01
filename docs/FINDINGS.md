@@ -418,3 +418,46 @@ ohne `?` landet das im Pfad und ergibt 404.
 Ablauf: `REQUEST_MAP` (siid 6/aiid 1) → Roboter lädt Dateien 0…9 hoch →
 `_sync.update_vacuum_mapinfo` (Status) → Integration holt die Dateien per
 `getDownloadUrl`/`getOss1dDownloadUrl` und rendert die Karte.
+
+### Decoder-Patch: Räume in der HA-Integration
+
+Die Tasshack-Integration (v2.0.2) verwirft im Zweig
+
+```python
+) or map_data.saved_map_status == 2:
+```
+
+alle Segment-IDs, weil sie `map_data.pixel_type[x, y] = MapPixelType.NEW_SEGMENT.value`
+setzt. Dadurch ist `camera.*_map` zwar vorhanden, aber `rooms: {}`.
+
+Lokaler Patch in `/config/custom_components/dreame_vacuum/dreame/map.py`
+(Backup: `map.py.bak`):
+
+1. Im `saved_map_status == 2`-Zweig alle Segmentpixel übernehmen:
+
+   ```python
+   map_data.pixel_type[x, y] = segment_id
+   ```
+
+2. Die Sonderbehandlung `if segment_id == 2: WALL` entfernen. In der
+   importierten Map 24 ist Segment 2 ein echter Raum; sonst fehlt Raum 2
+   (x0/y0/x1/y1 = null).
+
+Danach **Home Assistant neu starten** (ein Config-Entry-Reload reicht
+nicht, weil das Python-Modul bereits geladen ist). Ergebnis:
+
+```text
+camera.l10s_ultra_gen2_map
+  rooms: 1,2,3,4,5,6  (alle mit x0/y0/x1/y1)
+```
+
+Ein HACS-Update der Integration überschreibt `map.py`; der Patch muss
+danach erneut angewendet werden.
+
+### Kartenausrichtung im WebUI
+
+Der Roh-Kartenframe ist von unten nach oben gespeichert. Die Integration
+rendert deshalb mit `y = height - 1 - raw_y`. Das Add-on-WebUI macht das
+seit 0.6.2 genauso — inklusive Raum-Boxen, Roboterposition, Spur, Zonen
+und Klick-/Teilungskoordinaten. Ohne diese Spiegelung wirkt die Karte
+vertikal spiegelverkehrt.
