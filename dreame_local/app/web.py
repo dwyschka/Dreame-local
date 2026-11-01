@@ -6,6 +6,7 @@ import binascii
 import json
 import logging
 import math
+import re
 import struct
 import zlib
 from pathlib import Path
@@ -57,7 +58,7 @@ input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px soli
 <div class="row"><button id="refresh">Aktualisieren</button>
 <button id="mapreq">Karte anfordern</button>
 <button id="mapcheck">Karte prüfen</button>
-<a href="rooms" style="align-self:center">Räume bearbeiten →</a></div>
+<a href="rooms" style="align-self:center">Karte &amp; Räume →</a></div>
 <pre id="log"></pre>
 <h3 style="font-size:1rem">Diagnose</h3>
 <pre id="diag">…</pre>
@@ -132,7 +133,7 @@ ROOMS_PAGE = """<!doctype html>
 <html lang="de"><head><meta charset="utf-8">
 <meta http-equiv="cache-control" content="no-store">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Räume – Dreame Local</title>
+<title>Karte &amp; Räume – Dreame Local</title>
 <style>
 :root{color-scheme:light dark}
 body{font:14px/1.4 system-ui,sans-serif;margin:0;padding:16px;max-width:1200px}
@@ -155,7 +156,7 @@ button:disabled{opacity:.4;cursor:default}
 small{opacity:.7}
 #hint{min-height:2.5em;opacity:.8}
 </style></head><body>
-<h1>Raumaufteilung <small id="mapid"></small></h1>
+<h1>Karte &amp; Räume <small id="mapid"></small></h1>
 <a href="./">← Zurück</a>
 <div class="editor">
   <div class="mapwrap">
@@ -170,7 +171,13 @@ small{opacity:.7}
       <button id="rename" disabled>Umbenennen</button>
       <button id="merge" disabled>Zusammenführen</button>
       <button id="split" disabled>Teilen</button>
+      <button id="clean" disabled>Räume reinigen</button>
       <button id="reload">Aktualisieren</button>
+      <div class="row" style="margin-top:8px">
+        <button id="request">Karte anfordern</button>
+        <button id="backup">Karte sichern</button>
+        <button id="fastmap">Schnellkartierung</button>
+      </div>
       <div id="hint"></div>
     </div>
   </div>
@@ -215,6 +222,26 @@ function render(){
     t.textContent=r.name||('Raum '+r.id);
     overlay.appendChild(t);
   }
+  if(data.path && data.path.length>1){
+    const pl=document.createElementNS(NS,'polyline');
+    pl.setAttribute('points',data.path.map(p=>p[0]+','+p[1]).join(' '));
+    pl.setAttribute('fill','none'); pl.setAttribute('stroke','#ffd166');
+    pl.setAttribute('stroke-width',1.3); pl.setAttribute('stroke-opacity','0.9');
+    overlay.appendChild(pl);
+  }
+  if(data.robot){
+    const r=data.robot;
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',r.px); c.setAttribute('cy',r.py); c.setAttribute('r',3);
+    c.setAttribute('fill','#fff'); c.setAttribute('stroke','#111'); c.setAttribute('stroke-width',1);
+    overlay.appendChild(c);
+    const l=document.createElementNS(NS,'line');
+    l.setAttribute('x1',r.px); l.setAttribute('y1',r.py);
+    l.setAttribute('x2',r.px+Math.cos(r.a*Math.PI/180)*7);
+    l.setAttribute('y2',r.py+Math.sin(r.a*Math.PI/180)*7);
+    l.setAttribute('stroke','#111'); l.setAttribute('stroke-width',1.5);
+    overlay.appendChild(l);
+  }
   if(splitPts.length===1){
     const c=document.createElementNS(NS,'circle');
     c.setAttribute('cx',splitPts[0][0]); c.setAttribute('cy',splitPts[0][1]);
@@ -231,6 +258,7 @@ function render(){
   $('rename').disabled=selected.size!==1;
   $('merge').disabled=selected.size!==2;
   $('split').disabled=selected.size!==1;
+  $('clean').disabled=selected.size===0;
   $('split').textContent=splitMode?'Teilen abbrechen':'Teilen';
   hint.textContent=splitMode?'Zwei Punkte auf der Karte anklicken, um den Raum zu teilen.':'Räume anklicken, um sie auszuwählen.';
 }
@@ -271,8 +299,21 @@ $('merge').onclick=()=>{
   if(confirm('Räume '+ids.join(' + ')+' zusammenführen?')) post({action:'merge',ids});
 };
 $('split').onclick=()=>{ if(selected.size!==1) return; splitMode=!splitMode; splitPts=[]; render(); };
+$('clean').onclick=()=>{
+  if(selected.size===0) return;
+  const ids=[...selected];
+  if(confirm('Räume '+ids.join(', ')+' jetzt reinigen?')) post({action:'clean',ids});
+};
+$('request').onclick=async()=>{
+  const frame=JSON.stringify({req_type:1,frame_type:'I',force_type:1,time:Date.now()});
+  await post({action:'request_map',frame});
+};
+$('backup').onclick=()=>post({action:'backup_map'});
+$('fastmap').onclick=()=>{
+  if(confirm('Schnellkartierung starten?')) post({action:'fast_map'});
+};
 $('reload').onclick=load;
-load(); setInterval(load,15000);
+load(); setInterval(load,5000);
 </script></body></html>"""
 
 
@@ -614,6 +655,41 @@ class Web:
         m = self._load_map()
         if not m:
             return web.json_response({"ok": False, "error": "keine Kartendaten gefunden"})
+        origin_x, origin_y = m["origin"][0], m["origin"][1]
+        grid = m["grid"] or 50
+        robot = None
+        live = self.dev.props.get("6.1")
+        if isinstance(live, str) and live:
+            decoded = self._decode_map_text(live)
+            if decoded:
+                lraw, _lw, _lh, _linfo = decoded
+                x = int.from_bytes(lraw[5:7], "little", signed=True)
+                y = int.from_bytes(lraw[7:9], "little", signed=True)
+                a = int.from_bytes(lraw[9:11], "little", signed=True)
+                if x != 32767 and y != 32767:
+                    robot = {
+                        "x": x, "y": y, "a": a,
+                        "px": (x - origin_x) / grid,
+                        "py": (y - origin_y) / grid,
+                    }
+        path = []
+        raw_path = getattr(self.dev, "map_path", "")
+        if isinstance(raw_path, str) and raw_path:
+            current = (0, 0)
+            for match in re.finditer(r"([MWSLl])(-?\d+),(-?\d+)", raw_path):
+                operator = match.group(1)
+                x = int(match.group(2))
+                y = int(match.group(3))
+                if operator == "L":
+                    current = (current[0] + x, current[1] + y)
+                else:
+                    current = (x, y)
+                path.append([
+                    (current[0] - origin_x) / grid,
+                    (current[1] - origin_y) / grid,
+                ])
+            if len(path) > 4000:
+                path = path[-4000:]
         return web.json_response({
             "ok": True,
             "map_id": m["map_id"],
@@ -624,6 +700,8 @@ class Web:
             "source": m["name"],
             "mtime": int(m["mtime"]),
             "rooms": self._room_list(m),
+            "robot": robot,
+            "path": path,
         })
 
     async def map_png(self, request: web.Request) -> web.Response:
@@ -635,11 +713,52 @@ class Web:
     async def room_action(self, request: web.Request) -> web.Response:
         body = await request.json()
         action = str(body.get("action") or "")
-        m = self._load_map()
-        if not m:
-            return web.json_response({"ok": False, "error": "keine Karte geladen"})
-        map_id = int(body.get("map_id") or m["map_id"])
         try:
+            if action == "request_map":
+                frame = str(body.get("frame") or '{"frame_type":"I"}')
+                result = await self.dev.raw_action(6, 1, [{"piid": 2, "value": frame}])
+                events.add("map_request", result=result)
+                return web.json_response({"ok": True, "result": result})
+            if action == "fast_map":
+                # START_CUSTOM mit Status 21 = Schnellkartierung
+                result = await self.dev.raw_action(4, 1, [{"piid": 1, "value": 21}])
+                events.add("fast_map", result=result)
+                return web.json_response({"ok": True, "result": result})
+
+            m = self._load_map()
+            if not m:
+                return web.json_response({"ok": False, "error": "keine Karte geladen"})
+            map_id = int(body.get("map_id") or m["map_id"])
+
+            if action == "clean":
+                ids = [int(v) for v in (body.get("ids") or [])]
+                if not ids:
+                    raise ValueError("keine Räume ausgewählt")
+                fan = int(self.dev.get("SUCTION_LEVEL") or 2)
+                water = int(self.dev.get("WATER_VOLUME") or 2)
+                cleanlist = [[rid, 1, fan, water, 1] for rid in ids]
+                payload = {"selects": cleanlist}
+                params = {
+                    "did": self.dev.did,
+                    "siid": 4,
+                    "aiid": 1,
+                    "in": [
+                        {"piid": 1, "value": 18},  # SEGMENT_CLEANING
+                        {"piid": 10, "value": json.dumps(payload, separators=(",", ":"))},
+                    ],
+                }
+                log.info("Raumreinigung %s", payload)
+                result = await self.dev.send("action", params, timeout=20)
+                events.add("room_clean", ids=ids, result=result)
+                if isinstance(result, dict) and result.get("code") not in (0, None):
+                    return web.json_response({"ok": False, "error": str(result), "result": result})
+                return web.json_response({"ok": True, "result": result})
+
+            if action == "backup_map":
+                result = await self.dev.raw_action(6, 3, [{"piid": 4, "value": str(map_id)}])
+                events.add("map_backup", map_id=map_id, result=result)
+                return web.json_response({"ok": True, "result": result})
+
             if action == "rename":
                 rid = int(body.get("id"))
                 name = str(body.get("name") or "").strip()
