@@ -264,12 +264,16 @@ class DreameApi:
             if len(raw) >= image_end:
                 data = bytearray(raw[27:image_end])
                 for i, value in enumerate(data):
-                    if 0 < value < 64:
+                    if 1 <= value <= 6:
                         data[i] = (value << 2) & 0xFF
-                    elif value == 254:
+                    elif value == 0:
+                        data[i] = 0
+                    elif value in (249, 250, 251, 254):
                         data[i] = 248  # FLOOR (62)
                     elif value == 252:
                         data[i] = 244  # UNKNOWN (61)
+                    else:
+                        data[i] = 252  # WALL (63), alles andere
                 raw[27:image_end] = data
             if getattr(self.dev, "map_path", ""):
                 info["tr"] = self.dev.map_path
