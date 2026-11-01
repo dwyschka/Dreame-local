@@ -254,6 +254,23 @@ class DreameApi:
             # behandelt ("Diese Aktion ist auf der aktuellen Karte nicht
             # verfügbar").
             info["ris"] = 2
+            # Kompatibilitaetsmodus fuer die unveraenderte Tasshack-
+            # Integration: Der saved_map_status==2-Zweig verwirft die
+            # Segment-IDs. Der frame_map-Zweig (fsm=1) behaelt sie. Dafuer
+            # muessen die Rohpixel auf die frame_map-Kodierung umgestellt
+            # werden: Raumpixel = segment_id << 2, Wand = 255, Boden = 248,
+            # Unbekannt = 244.
+            info["fsm"] = 1
+            if len(raw) >= image_end:
+                data = bytearray(raw[27:image_end])
+                for i, value in enumerate(data):
+                    if 0 < value < 64:
+                        data[i] = (value << 2) & 0xFF
+                    elif value == 254:
+                        data[i] = 248  # FLOOR (62)
+                    elif value == 252:
+                        data[i] = 244  # UNKNOWN (61)
+                raw[27:image_end] = data
             if getattr(self.dev, "map_path", ""):
                 info["tr"] = self.dev.map_path
             raw = bytes(raw[:image_end]) + json.dumps(info, separators=(",", ":")).encode("utf8")
