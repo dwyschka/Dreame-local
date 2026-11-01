@@ -202,7 +202,7 @@ small{opacity:.7}
 <script>
 const palette=['#4c78a8','#f58518','#54a24b','#b279a2','#72b7b2','#e45756','#9d755d','#bab0ac'];
 let data=null, selected=new Set(), splitMode=false, splitPts=[];
-let zones={line:[],rect:[],mop:[]}, cleanZones=[], zoneMode=null, zonePts=[];
+let zones={line:[],rect:[],mop:[]}, cleanZones=[], zoneMode=null, zonePts=[], zoneExtra={};
 const ZONE_NAMES={nogo:'Sperrzone',nomop:'Wisch-Verbot',wall:'Virtuelle Wand',clean:'Reinigungszone'};
 const $=id=>document.getElementById(id);
 const img=$('mapimg'), overlay=$('overlay'), statusEl=$('status'), listEl=$('roomlist'), hint=$('hint');
@@ -223,6 +223,7 @@ async function load(force){
         rect:(z.rect||[]).map(a=>a.slice(0,4)),
         mop:(z.mop||[]).map(a=>a.slice(0,4))
       };
+      zoneExtra={nocpt:z.nocpt||[],addcpt:z.addcpt||[]};
       cleanZones=[];
     }
     $('mapid').textContent='Map '+data.map_id+' · '+data.width+'×'+data.height;
@@ -388,7 +389,7 @@ document.querySelectorAll('button[data-zone]').forEach(b=>b.onclick=()=>{
   zoneMode = zoneMode===b.dataset.zone ? null : b.dataset.zone;
   render();
 });
-$('zoneSave').onclick=()=>post({action:'zones',walls:zones.line,zones:zones.rect,no_mops:zones.mop});
+$('zoneSave').onclick=()=>post({action:'zones',walls:zones.line,zones:zones.rect,no_mops:zones.mop,extras:zoneExtra});
 $('zoneClean').onclick=()=>{
   if(cleanZones.length===0) return;
   if(confirm(cleanZones.length+' Reinigungszone(n) jetzt reinigen?')) post({action:'zone_clean',areas:cleanZones});
@@ -397,7 +398,7 @@ $('zoneClear').onclick=()=>{
   if(!confirm('Alle gespeicherten Zonen auf der Karte löschen?')) return;
   zones={line:[],rect:[],mop:[]}; cleanZones=[]; zonePts=[]; zoneMode=null;
   render();
-  post({action:'zones',walls:[],zones:[],no_mops:[]});
+  post({action:'zones',walls:[],zones:[],no_mops:[],extras:zoneExtra});
 };
 $('clean').onclick=()=>{
   if(selected.size===0) return;
@@ -913,7 +914,13 @@ class Web:
                 walls = [[int(round(float(v))) for v in wall[:4]] for wall in (body.get("walls") or [])]
                 zones = [[int(round(float(v))) for v in zone[:4]] for zone in (body.get("zones") or [])]
                 no_mops = [[int(round(float(v))) for v in zone[:4]] for zone in (body.get("no_mops") or [])]
-                payload = {"vw": {"line": walls, "rect": zones, "mop": no_mops}}
+                vw = {"line": walls, "rect": zones, "mop": no_mops}
+                extras = body.get("extras") or {}
+                if isinstance(extras, dict):
+                    for key in ("nocpt", "addcpt"):
+                        if isinstance(extras.get(key), list):
+                            vw[key] = extras[key]
+                payload = {"vw": vw}
             else:
                 raise ValueError("unbekannte Aktion")
             params = {
