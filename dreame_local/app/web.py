@@ -150,11 +150,13 @@ a{color:#49a}
 .k{font-size:.72rem;opacity:.7;text-transform:uppercase;letter-spacing:.04em}
 button{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid #8886;background:#8881;cursor:pointer;margin:2px}
 button:disabled{opacity:.4;cursor:default}
+button.active{background:#49a;border-color:#49a;color:#fff}
 .room{display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px;cursor:pointer;border:1px solid transparent}
 .room.sel{border-color:#49a;background:#49a2}
 .dot{width:12px;height:12px;border-radius:50%;flex:none}
 small{opacity:.7}
 #hint{min-height:2.5em;opacity:.8}
+#zonehint{min-height:2.5em;opacity:.8;margin-top:6px}
 </style></head><body>
 <h1>Karte &amp; Räume <small id="mapid"></small></h1>
 <a href="./">← Zurück</a>
@@ -166,6 +168,21 @@ small{opacity:.7}
   <div class="panel">
     <div class="card"><div class="k">Status</div><div id="status">lade …</div></div>
     <div class="card"><div class="k">Räume</div><div id="roomlist"></div></div>
+    <div class="card">
+      <div class="k">Zonen</div>
+      <div class="row">
+        <button data-zone="nogo">Sperrzone</button>
+        <button data-zone="nomop">Wisch-Verbot</button>
+        <button data-zone="wall">Virtuelle Wand</button>
+        <button data-zone="clean">Reinigungszone</button>
+      </div>
+      <div class="row">
+        <button id="zoneSave">Zonen speichern</button>
+        <button id="zoneClean" disabled>Bereich reinigen</button>
+        <button id="zoneClear">Alle Zonen löschen</button>
+      </div>
+      <div id="zonehint"></div>
+    </div>
     <div class="card">
       <div class="k">Aktionen</div>
       <button id="rename" disabled>Umbenennen</button>
@@ -185,16 +202,29 @@ small{opacity:.7}
 <script>
 const palette=['#4c78a8','#f58518','#54a24b','#b279a2','#72b7b2','#e45756','#9d755d','#bab0ac'];
 let data=null, selected=new Set(), splitMode=false, splitPts=[];
+let zones={line:[],rect:[],mop:[]}, cleanZones=[], zoneMode=null, zonePts=[];
+const ZONE_NAMES={nogo:'Sperrzone',nomop:'Wisch-Verbot',wall:'Virtuelle Wand',clean:'Reinigungszone'};
 const $=id=>document.getElementById(id);
 const img=$('mapimg'), overlay=$('overlay'), statusEl=$('status'), listEl=$('roomlist'), hint=$('hint');
 
 async function j(url,opt){const r=await fetch(url,opt); const t=await r.text(); try{return JSON.parse(t)}catch(e){throw new Error(t.slice(0,300))}}
 function colorFor(id){return palette[(Number(id)-1+palette.length)%palette.length]}
+function toPx(x,y){return [(x-data.origin[0])/data.grid,(y-data.origin[1])/data.grid]}
+function toMap(px,py){return [Math.round(data.origin[0]+px*data.grid),Math.round(data.origin[1]+py*data.grid)]}
 
-async function load(){
+async function load(force){
   try{
     data=await j('api/rooms?t='+Date.now());
     if(!data.ok){statusEl.textContent=data.error||'Keine Kartendaten';return}
+    if(force){
+      const z=data.zones||{};
+      zones={
+        line:(z.line||[]).map(a=>a.slice(0,4)),
+        rect:(z.rect||[]).map(a=>a.slice(0,4)),
+        mop:(z.mop||[]).map(a=>a.slice(0,4))
+      };
+      cleanZones=[];
+    }
     $('mapid').textContent='Map '+data.map_id+' · '+data.width+'×'+data.height;
     img.src='api/map.png?t='+Date.now();
     overlay.setAttribute('viewBox',`0 0 ${data.width} ${data.height}`);
@@ -214,7 +244,7 @@ function render(){
     rect.setAttribute('fill',(r.color||colorFor(r.id))+'33');
     rect.setAttribute('stroke',selected.has(r.id)?'#fff':'#0008');
     rect.setAttribute('stroke-width',selected.has(r.id)?2:1);
-    rect.addEventListener('click',ev=>{ev.stopPropagation(); toggle(r.id)});
+    rect.addEventListener('click',ev=>{ if(splitMode||zoneMode) return; ev.stopPropagation(); toggle(r.id)});
     overlay.appendChild(rect);
     const t=document.createElementNS(NS,'text');
     t.setAttribute('x',(b[0]+b[2])/2); t.setAttribute('y',(b[1]+b[3])/2);
@@ -242,6 +272,37 @@ function render(){
     l.setAttribute('stroke','#111'); l.setAttribute('stroke-width',1.5);
     overlay.appendChild(l);
   }
+  const drawRectZone=(area,stroke,fill,dash)=>{
+    const a=toPx(area[0],area[1]), b=toPx(area[2],area[3]);
+    const x=Math.min(a[0],b[0]), y=Math.min(a[1],b[1]);
+    const w=Math.max(0.5,Math.abs(b[0]-a[0])), h=Math.max(0.5,Math.abs(b[1]-a[1]));
+    const el=document.createElementNS(NS,'rect');
+    el.setAttribute('x',x); el.setAttribute('y',y);
+    el.setAttribute('width',w); el.setAttribute('height',h);
+    el.setAttribute('fill',fill); el.setAttribute('stroke',stroke);
+    el.setAttribute('stroke-width',1.5); el.setAttribute('pointer-events','none');
+    if(dash) el.setAttribute('stroke-dasharray','3 2');
+    overlay.appendChild(el);
+  };
+  const drawLineZone=(line,stroke,dash)=>{
+    const a=toPx(line[0],line[1]), b=toPx(line[2],line[3]);
+    const el=document.createElementNS(NS,'line');
+    el.setAttribute('x1',a[0]); el.setAttribute('y1',a[1]);
+    el.setAttribute('x2',b[0]); el.setAttribute('y2',b[1]);
+    el.setAttribute('stroke',stroke); el.setAttribute('stroke-width',2);
+    el.setAttribute('pointer-events','none');
+    if(dash) el.setAttribute('stroke-dasharray','3 2');
+    overlay.appendChild(el);
+  };
+  for(const z of zones.rect) drawRectZone(z,'#e45756','#e4575633',false);
+  for(const z of zones.mop) drawRectZone(z,'#f58518','#f5851833',false);
+  for(const z of zones.line) drawLineZone(z,'#ffffff',false);
+  for(const z of cleanZones) drawRectZone(z,'#54a24b','#54a24b33',true);
+  if(zonePts.length===1){
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',zonePts[0][0]); c.setAttribute('cy',zonePts[0][1]);
+    c.setAttribute('r',2); c.setAttribute('fill','#fff'); overlay.appendChild(c);
+  }
   if(splitPts.length===1){
     const c=document.createElementNS(NS,'circle');
     c.setAttribute('cx',splitPts[0][0]); c.setAttribute('cy',splitPts[0][1]);
@@ -259,15 +320,38 @@ function render(){
   $('merge').disabled=selected.size!==2;
   $('split').disabled=selected.size!==1;
   $('clean').disabled=selected.size===0;
+  $('zoneClean').disabled=cleanZones.length===0;
   $('split').textContent=splitMode?'Teilen abbrechen':'Teilen';
+  document.querySelectorAll('button[data-zone]').forEach(b=>b.classList.toggle('active',b.dataset.zone===zoneMode));
   hint.textContent=splitMode?'Zwei Punkte auf der Karte anklicken, um den Raum zu teilen.':'Räume anklicken, um sie auszuwählen.';
+  $('zonehint').textContent=zoneMode
+    ? ZONE_NAMES[zoneMode]+': zwei Punkte auf der Karte anklicken.'
+    : (zones.rect.length+' Sperrzonen, '+zones.mop.length+' Wisch-Verbote, '+zones.line.length+' virtuelle Wände, '+cleanZones.length+' Reinigungszonen');
 }
 function toggle(id){if(selected.has(id))selected.delete(id);else selected.add(id);render()}
 overlay.addEventListener('click',ev=>{
-  if(!splitMode||selected.size!==1||!data) return;
+  if(!data) return;
   const p=overlay.createSVGPoint(); p.x=ev.clientX; p.y=ev.clientY;
   const q=p.matrixTransform(overlay.getScreenCTM().inverse());
   const px=Math.max(0,Math.min(data.width,q.x)), py=Math.max(0,Math.min(data.height,q.y));
+  if(zoneMode){
+    zonePts.push([px,py]);
+    if(zonePts.length===2){
+      const a=toMap(zonePts[0][0],zonePts[0][1]);
+      const b=toMap(zonePts[1][0],zonePts[1][1]);
+      if(zoneMode==='wall'){
+        zones.line.push([a[0],a[1],b[0],b[1]]);
+      }else{
+        const area=[a[0],a[1],b[0],b[1]];
+        if(zoneMode==='nogo') zones.rect.push(area);
+        else if(zoneMode==='nomop') zones.mop.push(area);
+        else cleanZones.push(area);
+      }
+      zonePts=[]; zoneMode=null;
+    }
+    render(); return;
+  }
+  if(!splitMode||selected.size!==1) return;
   splitPts.push([px,py]);
   if(splitPts.length===2){
     const [a,b]=splitPts;
@@ -298,7 +382,23 @@ $('merge').onclick=()=>{
   const ids=[...selected];
   if(confirm('Räume '+ids.join(' + ')+' zusammenführen?')) post({action:'merge',ids});
 };
-$('split').onclick=()=>{ if(selected.size!==1) return; splitMode=!splitMode; splitPts=[]; render(); };
+$('split').onclick=()=>{ if(selected.size!==1) return; zoneMode=null; zonePts=[]; splitMode=!splitMode; splitPts=[]; render(); };
+document.querySelectorAll('button[data-zone]').forEach(b=>b.onclick=()=>{
+  splitMode=false; splitPts=[]; zonePts=[];
+  zoneMode = zoneMode===b.dataset.zone ? null : b.dataset.zone;
+  render();
+});
+$('zoneSave').onclick=()=>post({action:'zones',walls:zones.line,zones:zones.rect,no_mops:zones.mop});
+$('zoneClean').onclick=()=>{
+  if(cleanZones.length===0) return;
+  if(confirm(cleanZones.length+' Reinigungszone(n) jetzt reinigen?')) post({action:'zone_clean',areas:cleanZones});
+};
+$('zoneClear').onclick=()=>{
+  if(!confirm('Alle gespeicherten Zonen auf der Karte löschen?')) return;
+  zones={line:[],rect:[],mop:[]}; cleanZones=[]; zonePts=[]; zoneMode=null;
+  render();
+  post({action:'zones',walls:[],zones:[],no_mops:[]});
+};
 $('clean').onclick=()=>{
   if(selected.size===0) return;
   const ids=[...selected];
@@ -312,8 +412,8 @@ $('backup').onclick=()=>post({action:'backup_map'});
 $('fastmap').onclick=()=>{
   if(confirm('Schnellkartierung starten?')) post({action:'fast_map'});
 };
-$('reload').onclick=load;
-load(); setInterval(load,5000);
+$('reload').onclick=()=>load(true);
+load(true); setInterval(()=>load(false),5000);
 </script></body></html>"""
 
 
@@ -700,6 +800,7 @@ class Web:
             "source": m["name"],
             "mtime": int(m["mtime"]),
             "rooms": self._room_list(m),
+            "zones": m["info"].get("vw") or {},
             "robot": robot,
             "path": path,
         })
@@ -754,6 +855,31 @@ class Web:
                     return web.json_response({"ok": False, "error": str(result), "result": result})
                 return web.json_response({"ok": True, "result": result})
 
+            if action == "zone_clean":
+                areas = []
+                for area in (body.get("areas") or []):
+                    coords = [int(round(float(v))) for v in area[:4]]
+                    if len(coords) == 4:
+                        areas.append(coords)
+                if not areas:
+                    raise ValueError("keine Reinigungszone ausgewählt")
+                payload = {"areas": areas}
+                params = {
+                    "did": self.dev.did,
+                    "siid": 4,
+                    "aiid": 1,
+                    "in": [
+                        {"piid": 1, "value": 19},  # ZONE_CLEANING
+                        {"piid": 10, "value": json.dumps(payload, separators=(",", ":"))},
+                    ],
+                }
+                log.info("Zonenreinigung %s", payload)
+                result = await self.dev.send("action", params, timeout=20)
+                events.add("zone_clean", areas=areas, result=result)
+                if isinstance(result, dict) and result.get("code") not in (0, None):
+                    return web.json_response({"ok": False, "error": str(result), "result": result})
+                return web.json_response({"ok": True, "result": result})
+
             if action == "backup_map":
                 result = await self.dev.raw_action(6, 3, [{"piid": 4, "value": str(map_id)}])
                 events.add("map_backup", map_id=map_id, result=result)
@@ -783,6 +909,11 @@ class Web:
                 if len(line) != 4:
                     raise ValueError("Teilungslinie fehlt")
                 payload = {"dsrid": line + [rid], "mapid": map_id}
+            elif action == "zones":
+                walls = [[int(round(float(v))) for v in wall[:4]] for wall in (body.get("walls") or [])]
+                zones = [[int(round(float(v))) for v in zone[:4]] for zone in (body.get("zones") or [])]
+                no_mops = [[int(round(float(v))) for v in zone[:4]] for zone in (body.get("no_mops") or [])]
+                payload = {"vw": {"line": walls, "rect": zones, "mop": no_mops}}
             else:
                 raise ValueError("unbekannte Aktion")
             params = {
