@@ -249,7 +249,7 @@ class DreameApi:
                     raw[2:4] = lraw[2:4]            # frame_id = live frame
                     raw[5:7] = lraw[5:7]            # robot x
                     raw[7:9] = lraw[7:9]            # robot y
-                    raw[9] = lraw[9]               # robot angle
+                    raw[9:11] = lraw[9:11]         # signed 16-bit robot angle
                     lw = int.from_bytes(lraw[19:21], "little")
                     lh = int.from_bytes(lraw[21:23], "little")
                     try:
