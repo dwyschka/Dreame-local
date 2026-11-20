@@ -239,15 +239,29 @@ class Device:
         result = data.get("result")
         # get_properties liefert [{siid,piid,value,code}] -> direkt in den Zustand
         changed = False
+        properties = []
         if isinstance(result, list):
             for item in result:
-                if isinstance(item, dict) and "siid" in item and "piid" in item and "value" in item:
+                if (isinstance(item, dict) and item.get("code") == 0
+                        and "siid" in item and "piid" in item and "value" in item):
                     key = f"{item['siid']}.{item['piid']}"
                     if self.props.get(key) != item["value"]:
                         self.props[key] = item["value"]
                         changed = True
+                    # A get reply updates our cache but is not a robot status
+                    # push. HACS subscribes only to /status/, not /recv/.
+                    # Send genuine successful values even when our own cache
+                    # already matches, so a stale subscriber can catch up.
+                    # Maps require the broker's frame transform; leave that
+                    # path alone rather than injecting a raw reply as a push.
+                    if item["siid"] != 6:
+                        properties.append(item)
         if changed:
             await self._notify()
+        if properties:
+            await self._publish(self.status_topic, json.dumps({
+                "data": {"method": "properties_changed", "params": properties}
+            }))
         if isinstance(result, dict) and "code" in result:
             log.debug("Ergebnis %s: %s", rid, result)
 
