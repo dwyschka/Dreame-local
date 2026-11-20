@@ -592,7 +592,23 @@ class Web:
     @staticmethod
     def _decode_map_text(text: str):
         text = text.strip()
-        if not text or text.startswith("{"):
+        if not text:
+            return None
+        if text.startswith("{"):
+            try:
+                entries = json.loads(text).get("mapstr")
+            except (ValueError, TypeError):
+                return None
+            if not isinstance(entries, list):
+                return None
+            for entry in entries:
+                blob = entry.get("map") if isinstance(entry, dict) else None
+                # Accept the same map-list wrapper as the cloud API, not
+                # recursively nested wrappers or unrelated uploaded JSON.
+                if isinstance(blob, str) and not blob.lstrip().startswith("{"):
+                    decoded = Web._decode_map_text(blob)
+                    if decoded:
+                        return decoded
             return None
         if "," in text:
             text = text.split(",", 1)[0]
@@ -617,6 +633,15 @@ class Web:
 
     def _load_map(self):
         root = self.data_dir / "uploads" / f"ali_dreame/{self.dev.uid}/{self.dev.did}"
+        if not self.dev.uid:
+            # UID can be empty after a server restart until the next dev_start.
+            # Read only an unambiguous cache for this exact device; never
+            # change identity or select another device/account by freshness.
+            base = self.data_dir / "uploads" / "ali_dreame"
+            candidates = [p for p in base.glob("*/*")
+                          if p.name == str(self.dev.did) and p.is_dir()]
+            if len(candidates) == 1:
+                root = candidates[0]
         best = None
         for name in ("9", "9.frame"):
             path = root / name
