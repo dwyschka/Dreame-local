@@ -74,7 +74,7 @@ async function tick(){
     document.getElementById('cards').innerHTML = [
       card('Akku', s.battery!=null ? s.battery+' %' : null),
       card('Status', s.state), card('Fehler', s.error||'–'),
-      card('Fläche', s.cleaned_area), card('Zeit', s.cleaning_time!=null ? s.cleaning_time+' s' : null),
+      card('Fläche', s.cleaned_area), card('Zeit', s.cleaning_time!=null ? s.cleaning_time+' min' : null),
       card('Saugen', s.suction), card('Wasser', s.water), card('Modus', s.mode),
       card('Firmware', s.ver)
     ].join('');
@@ -841,7 +841,8 @@ class Web:
                 ids = [int(v) for v in (body.get("ids") or [])]
                 if not ids:
                     raise ValueError("keine Räume ausgewählt")
-                fan = int(self.dev.get("SUCTION_LEVEL") or 2)
+                fan_value = self.dev.get("SUCTION_LEVEL")
+                fan = int(fan_value if fan_value is not None else 2)
                 water = int(self.dev.get("WATER_VOLUME") or 2)
                 cleanlist = [[rid, 1, fan, water, 1] for rid in ids]
                 payload = {"selects": cleanlist}
@@ -952,7 +953,8 @@ class Web:
         body: dict[str, Any] = await request.json()
         try:
             if "action" in body:
-                res = await self.dev.action(str(body["action"]))
+                action = str(body["action"])
+                res = await self.dev.action("charge" if action == "return_to_base" else action)
             elif "method" in body:
                 res = await self.dev.send(str(body["method"]), body.get("params"))
             elif "set" in body:
@@ -969,6 +971,10 @@ class Web:
                 res = await self.dev.get_properties(list(body["get"]))
             else:
                 return web.json_response({"ok": False, "error": "action|method|set|get fehlt"}, status=400)
+            results = res if isinstance(res, list) else [res]
+            failures = [r.get("code") for r in results if isinstance(r, dict) and r.get("code") not in (0, None)]
+            if failures:
+                return web.json_response({"ok": False, "error": f"Roboter hat den Befehl abgelehnt (Code {failures[0]})", "result": res})
             return web.json_response({"ok": True, "result": res})
         except Exception as exc:
             return web.json_response({"ok": False, "error": str(exc)}, status=500)
