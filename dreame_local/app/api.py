@@ -123,6 +123,20 @@ class DreameApi:
 
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ctx.load_cert_chain(self.cert, self.key)
+
+        # Diagnose: Ein Client-Alert beim Handshake ist fast immer ein
+        # nicht vertrauenswuerdiges API-Zertifikat.
+        def _tls_msg(_conn, direction, _version, content_type, _msg_type, data) -> None:
+            if direction == "read" and int(content_type) == 21 and len(data) >= 2:
+                level, desc = data[0], data[1]
+                if level == 2 or desc in (42, 48):  # fatal / bad_certificate / unknown_ca
+                    log.warning("API-TLS: Alert vom Client (level=%d desc=%d)", level, desc)
+
+        try:
+            ctx._msg_callback = _tls_msg  # type: ignore[attr-defined]
+        except Exception:  # pragma: no cover
+            pass
+
         runner = web.AppRunner(self.app)
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", self.port, ssl_context=ctx)

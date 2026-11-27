@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dreame Local CA",
+        "description": "Traegt die CA des Dreame-Local-Add-ons in certifi ein und laedt die Dreame-Vacuum-Integration neu. Nach HA-Core-Updates laeuft das automatisch erneut."
+      }
+    },
+    "abort": {
+      "already_configured": "Die Bridge ist bereits eingerichtet."
+    }
+  }
+}

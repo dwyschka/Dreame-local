@@ -460,6 +460,7 @@ class Web:
                 web.get("/api/state", self.state),
                 web.get("/api/uploads", self.uploads),
                 web.get("/api/diagnostics", self.diagnostics),
+                web.get("/api/ca.pem", self.ca_pem),
                 web.get("/api/mapcheck", self.mapcheck),
                 web.get("/rooms", self.rooms_page),
                 web.get("/api/rooms", self.rooms_data),
@@ -504,6 +505,16 @@ class Web:
                                   "mtime": int(st.st_mtime)})
         files.sort(key=lambda x: x["mtime"], reverse=True)
         return web.json_response({"uploads": files, "log": str(self.data_dir / "api.log")})
+
+    async def ca_pem(self, request: web.Request) -> web.Response:
+        ca = self.data_dir / "certs" / "ca.pem"
+        if not ca.is_file():
+            return web.Response(status=404, text="CA noch nicht erzeugt")
+        return web.Response(
+            body=ca.read_bytes(),
+            content_type="application/x-pem-file",
+            headers={"Content-Disposition": "attachment; filename=dreame-local-ca.pem"},
+        )
 
     async def diagnostics(self, request: web.Request) -> web.Response:
         root = self.data_dir / "uploads"

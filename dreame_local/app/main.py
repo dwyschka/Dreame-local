@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import io
 import json
 import logging
 import os
 import ssl
 import sys
+import tarfile
 import zlib
 from pathlib import Path
 
@@ -19,6 +21,7 @@ import aiohttp
 from aiohttp import web
 
 from api import DreameApi
+from certutil import ensure_api_cert, export_ca, resolve_material
 import events
 from broker import MqttBroker
 from device import Device
@@ -27,7 +30,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.9.2"
+VERSION = "0.9.6"
 
 
 def load_options() -> dict:
@@ -54,6 +57,8 @@ def load_options() -> dict:
         "upload_http_port",
         "upload_scheme",
         "discovery_prefix",
+        "api_cert",
+        "api_key",
         "api_port",
         "mac",
         "log_level",
@@ -124,6 +129,73 @@ async def upload_server(
         ulog.info("Upload gespeichert: %s (%d Bytes)", target, size)
         events.add("upload", name=name, size=size)
         return web.Response(text="ok")
+
+    # Die Web-UI (8099) ist bei HA OS nur ueber Ingress erreichbar. Der
+    # Upload-Port 19980 ist gemappt und unverschluesselt; dort gibt es die
+    # CA fuer die einmalige Installation in certifi.
+    async def ca_pem(_request: web.Request) -> web.Response:
+        target = data_dir / "certs" / "ca.pem"
+        if not target.is_file():
+            raise web.HTTPNotFound(text="CA noch nicht erzeugt")
+        return web.Response(
+            body=target.read_bytes(),
+            content_type="application/x-pem-file",
+            headers={"Content-Disposition": "attachment; filename=dreame-local-ca.pem"},
+        )
+
+    app.add_routes([web.get("/ca.pem", ca_pem)])
+
+    def _bridge_tar() -> bytes:
+        """Custom Component als tar.gz (ohne __pycache__) verpacken."""
+        buf = io.BytesIO()
+
+        def _filter(info: tarfile.TarInfo):
+            if info.name.endswith(".pyc") or Path(info.name).name in ("__pycache__", ".DS_Store"):
+                return None
+            return info
+
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            tar.add(HERE / "dreame_local_ca", arcname="dreame_local_ca", filter=_filter)
+        return buf.getvalue()
+
+    async def bridge_tar(_request: web.Request) -> web.Response:
+        return web.Response(
+            body=_bridge_tar(),
+            content_type="application/gzip",
+            headers={"Content-Disposition": 'attachment; filename="dreame_local_ca.tar.gz"'},
+        )
+
+    async def install_bridge(request: web.Request) -> web.Response:
+        base = (
+            f"http://{lan_ip}:{http_port}"
+            if lan_ip and http_port
+            else f"{request.scheme}://{request.host}"
+        )
+        template = (HERE / "install_bridge.sh").read_text()
+        return web.Response(
+            text=template.replace("__BASE_URL__", base),
+            content_type="text/x-shellscript",
+            headers={"Content-Disposition": 'attachment; filename="install-bridge.sh"'},
+        )
+
+    app.add_routes(
+        [
+            web.get("/dreame_local_ca.tar.gz", bridge_tar),
+            web.get("/install-bridge.sh", install_bridge),
+        ]
+    )
+
+    async def install_ca(_request: web.Request) -> web.Response:
+        target = HERE / "install_ca.sh"
+        if not target.is_file():
+            raise web.HTTPNotFound(text="Installationsskript fehlt")
+        return web.Response(
+            body=target.read_bytes(),
+            content_type="text/x-shellscript",
+            headers={"Content-Disposition": 'attachment; filename="install-ca.sh"'},
+        )
+
+    app.add_routes([web.get("/install-ca.sh", install_ca)])
 
     # Alle Methoden, damit GET/HEAD/OPTIONS-Probes nicht mit 405 abbrechen.
     routes = [
@@ -219,6 +291,22 @@ async def amain() -> int:
     uid = str(opts.get("device_uid") or "")
     model = str(opts.get("device_model") or "dreame.vacuum.r2469a")
     region = str(opts.get("region") or "eu")
+    api_cert_opt = str(opts.get("api_cert") or "").strip()
+    api_key_opt = str(opts.get("api_key") or "").strip()
+    if api_cert_opt or api_key_opt:
+        api_cert = resolve_material(api_cert_opt, cert, data_dir, "api_chain.pem")
+        api_key = resolve_material(api_key_opt, key, data_dir, "api.key")
+    else:
+        api_cert, api_key, api_ca = ensure_api_cert(data_dir, region)
+        log.info("API-Zertifikat automatisch erzeugt: %s (CA: %s)", api_cert, api_ca)
+        for path in export_ca(data_dir, Path("/share")):
+            log.info("CA fuer die Integration liegt unter %s", path)
+        log.info(
+            "Tasshack-Integration >= 2.0.3 prueft gegen certifi, nicht gegen den "
+            "System-Trust-Store. Einmalig http://<HA-IP>:19980/install-bridge.sh "
+            "ausfuehren und die Integration 'Dreame Local CA' hinzufuegen; "
+            "Fallback: install-ca.sh."
+        )
     broker_port = int(opts.get("broker_port") or 19973)
     web_port = int(opts.get("web_port") or 8099)
     upload_port = int(opts.get("upload_port") or 8443)
@@ -370,8 +458,8 @@ async def amain() -> int:
     api = DreameApi(
         device,
         api_port,
-        cert,
-        key,
+        api_cert,
+        api_key,
         data_dir,
         public_host=lan_ip,
         mac=str(opts.get("mac") or ""),

@@ -68,6 +68,40 @@ aus der Integration.
 
 ## 4. Integration einrichten
 
+> **API-TLS-Zertifikat nötig:** Die Integration prüft TLS für
+> `eu.iot.dreame.tech:13267` (CA + SAN). Beim ersten Start erzeugt das Add-on
+> automatisch eine lokale CA + Leaf mit SAN (`/data/certs/`, nur Port 13267).
+> Tasshack ≥ 2.0.3 prüft **nur gegen `certifi`**, nicht gegen den
+> System-Trust-Store.
+>
+> **Dauerhaft (empfohlen):** einmalig im Terminal/SSH-Add-on (Protection kann
+> anbleiben):
+>
+> ```bash
+> curl -fsSL http://<HA-IP>:19980/install-bridge.sh -o /tmp/install-bridge.sh
+> bash /tmp/install-bridge.sh
+> ha core restart
+> ```
+>
+> Danach die Integration **Dreame Local CA** einmal hinzufügen. Die Bridge
+> trägt die CA bei jedem Start erneut ein und lädt `dreame_vacuum` neu — kein
+> Skript nach Core-Updates. Manuell: Ordner
+> `dreame_local/app/dreame_local_ca` nach `/config/custom_components/`.
+>
+> **Fallback:** Einmalig auf dem HA-Host (Terminal/SSH-Add-on, Protection
+> AUS):
+>
+> ```bash
+> curl -fsSL http://<HA-IP>:19980/install-ca.sh -o /tmp/install-ca.sh
+> bash /tmp/install-ca.sh
+> ha core restart
+> ```
+>
+> Die CA liegt nach dem Add-on-Start unter `/share/dreame-local-ca.pem` bzw.
+> `http://<HA-IP>:19980/ca.pem`. Der Fallback muss nach jedem Core-Update
+> erneut ausgeführt werden; mit der Custom Component entfällt das.
+> Details siehe README, Abschnitt „API-TLS-Zertifikat für Modus B“.
+
 1. HACS → Integrationen → **Dreame Vacuum** installieren, HA neu starten.
 2. Einstellungen → Geräte & Dienste → Integration hinzufügen →
    **Dreame Vacuum**.
@@ -154,6 +188,7 @@ Firmware-Updates gebraucht.
 | Problem | Prüfen |
 |---|---|
 | Integration meldet Login-Fehler | DNS `eu.iot.dreame.tech` → HA-IP? Port 13267 offen? Add-on-Log |
+| Login-Fehler `certificate verify failed` ... `CN=client` | Zuerst prüfen, ob **Dreame Local CA** eingerichtet ist; sonst `install-bridge.sh` + `ha core restart`. Fallback: `install-ca.sh` (nicht System-Trust-Store) |
 | Gerät wird nicht gefunden | `device_did` leer? Roboter verbunden (`Roboter verbunden` im Log)? |
 | Gerät offline | DNS `*.mt…` → HA-IP? Port 19973? |
 | Karte leer | Einmal reinigen lassen; `MAP_LIST` im Log? Datei in `/data/uploads`? |

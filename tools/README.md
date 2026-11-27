@@ -5,6 +5,7 @@ Zertifikate/Material, das nicht im Repo liegt (siehe `docs/FINDINGS.md`).
 
 | Datei | Zweck |
 |---|---|
+| `gen_local_api_cert.sh` | Alternative lokale API-CA + Leaf manuell erzeugen |
 | `gen_ca.py` | Rekonstruiert die acht schwachen eMudhra-Intermediate-Keys und baut Test-Ketten (`src/impacted-intermediates.json`) |
 | `run_capture.sh` | mitmproxy als Reverse-Proxy für 19973 (MQTT) und 13267 (API) |
 | `addons/mqtt_dump.py` | mitmproxy-Addon: ClientHello + MQTT-Decoder + HTTP-Dump |

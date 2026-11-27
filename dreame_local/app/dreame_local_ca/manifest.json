@@ -1,0 +1,10 @@
+{
+  "domain": "dreame_local_ca",
+  "name": "Dreame Local CA Bridge",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/dwyschka/Dreame-local",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}
